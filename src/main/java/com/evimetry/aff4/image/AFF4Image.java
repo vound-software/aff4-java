@@ -16,12 +16,6 @@
  */
 package com.evimetry.aff4.image;
 
-import java.util.Optional;
-
-import org.apache.jena.rdf.model.Model;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import com.evimetry.aff4.AFF4Lexicon;
 import com.evimetry.aff4.IAFF4Image;
 import com.evimetry.aff4.IAFF4Map;
@@ -29,6 +23,11 @@ import com.evimetry.aff4.container.AFF4ZipContainer;
 import com.evimetry.aff4.map.AFF4Map;
 import com.evimetry.aff4.rdf.RDFUtil;
 import com.evimetry.aff4.resource.AFF4Resource;
+import org.apache.jena.rdf.model.Model;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.util.Optional;
 
 /**
  * aff4:Image implementation.
@@ -47,12 +46,12 @@ public class AFF4Image extends AFF4Resource implements IAFF4Image {
 
 	/**
 	 * Create a new AFF4 Image instance
-	 * 
+	 *
 	 * @param resource The resource for this image.
-	 * @param parent The parent container
-	 * @param model The RDF model to query about this image stream.
+	 * @param parent   The parent container
+	 * @param model    The RDF model to query about this image stream.
 	 */
-	public AFF4Image(String resource, AFF4ZipContainer parent,  Model model) {
+	public AFF4Image(String resource, AFF4ZipContainer parent, Model model) {
 		super(resource);
 		this.parent = parent;
 		this.model = model;
@@ -61,7 +60,7 @@ public class AFF4Image extends AFF4Resource implements IAFF4Image {
 
 	/**
 	 * Initialise the properties for this aff4 object.
-	 * 
+	 *
 	 * @param model The model to read for properties about this image.
 	 */
 	private void initProperties(Model model) {
@@ -78,14 +77,27 @@ public class AFF4Image extends AFF4Resource implements IAFF4Image {
 		addStringProperty(model, getResourceID(), AFF4Lexicon.acquisitionType);
 		addResourceProperty(model, getResourceID(), AFF4Lexicon.dataStream);
 		addResourceProperty(model, getResourceID(), AFF4Lexicon.dependentStream);
-		// Is disk or memory image?
-		if (properties.get(AFF4Lexicon.RDFType).contains(AFF4Lexicon.MemoryImage)) {
+		// Is disk memory or file image?
+
+		if (properties.get(AFF4Lexicon.RDFType).contains(AFF4Lexicon.FileImage) || properties.get(AFF4Lexicon.RDFType).contains(AFF4Lexicon.Folder)) {
+
+			addDateTimeProperty(model, getResourceID(), AFF4Lexicon.BirthTime);
+			addStringProperties(model, getResourceID(), AFF4Lexicon.hash);
+			addDateTimeProperty(model, getResourceID(), AFF4Lexicon.LastAccessed);
+			addDateTimeProperty(model, getResourceID(), AFF4Lexicon.LastWritten);
+			addStringProperty(model, getResourceID(), AFF4Lexicon.OriginalFileName);
+			addDateTimeProperty(model, getResourceID(), AFF4Lexicon.RecordChanged);
+
+		}
+		else if (properties.get(AFF4Lexicon.RDFType).contains(AFF4Lexicon.MemoryImage)) {
 			// Memory
 			addLongProperty(model, getResourceID(), AFF4Lexicon.pageSize);
 			addLongProperty(model, getResourceID(), AFF4Lexicon.memoryPageTableEntryOffset);
 			addLongProperty(model, getResourceID(), AFF4Lexicon.memoryInstalledSize);
 			addLongProperty(model, getResourceID(), AFF4Lexicon.memoryAddressableSize);
-		} else {
+
+		}
+		else {
 			// Disk
 			addIntProperty(model, getResourceID(), AFF4Lexicon.blockSize);
 			addStringProperty(model, getResourceID(), AFF4Lexicon.diskDeviceName);
@@ -95,7 +107,9 @@ public class AFF4Image extends AFF4Resource implements IAFF4Image {
 			addStringProperty(model, getResourceID(), AFF4Lexicon.diskModel);
 			addStringProperty(model, getResourceID(), AFF4Lexicon.diskSerial);
 			addLongProperty(model, getResourceID(), AFF4Lexicon.sectorCount);
+
 		}
+
 		// Add basic case details.
 		Optional<String> caseResource = RDFUtil.getResourceTarget(model, getResourceID(), AFF4Lexicon.CaseDetails);
 		if (caseResource.isPresent()) {
@@ -109,6 +123,8 @@ public class AFF4Image extends AFF4Resource implements IAFF4Image {
 			addBooleanProperty(model, getResourceID(), AFF4Lexicon.ContainsUnallocated);
 			addBooleanProperty(model, getResourceID(), AFF4Lexicon.ContainsExtents);
 		}
+		addResourceProperty(model, getResourceID(), AFF4Lexicon.original_filename);
+
 	}
 
 	@Override

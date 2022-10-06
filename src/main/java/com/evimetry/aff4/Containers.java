@@ -16,21 +16,21 @@
  */
 package com.evimetry.aff4;
 
-import java.io.File;
-import java.io.IOException;
-import java.io.InputStream;
-import java.nio.charset.StandardCharsets;
-import java.util.zip.ZipEntry;
-import java.util.zip.ZipException;
-
+import com.evimetry.aff4.container.AFF4ZipContainer;
+import com.evimetry.aff4.resolver.LightResolver;
 import org.apache.commons.compress.archivers.zip.ZipArchiveEntry;
 import org.apache.commons.compress.archivers.zip.ZipFile;
 import org.apache.commons.io.IOUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.evimetry.aff4.container.AFF4ZipContainer;
-import com.evimetry.aff4.resolver.LightResolver;
+import java.io.File;
+import java.io.IOException;
+import java.io.InputStream;
+import java.nio.channels.SeekableByteChannel;
+import java.nio.charset.StandardCharsets;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipException;
 
 /**
  * AFF4 Container Factory methods
@@ -55,6 +55,15 @@ public class Containers {
 		container.setResolver(createResolver(file));
 		return container;
 	}
+
+
+	public static IAFF4Container open(SeekableByteChannel sc) throws IOException, UnsupportedOperationException {
+		IAFF4Container container = openContainer(sc);
+		container.setResolver(createResolver());
+		return container;
+	}
+
+
 
 	/**
 	 * Open the given file as a AFF4 Container
@@ -103,6 +112,57 @@ public class Containers {
 	}
 
 	/**
+	 * Open the given stream as an AFF4 Container
+	 * @param sbc
+	 * @return
+	 * @throws IOException
+	 */
+
+	private static IAFF4Container openContainer(SeekableByteChannel sbc) throws IOException {
+
+		try {
+			ZipFile zip = new ZipFile(sbc);
+
+			String resourceID = getResourceID(zip);
+
+			return new AFF4ZipContainer(resourceID, zip, sbc);
+		} catch (Throwable e) {
+			if (e instanceof IOException) {
+				throw e;
+			}
+			throw new IOException(e);
+		}
+	}
+
+
+	public static String getResourceID(ZipFile zip) {
+		/*
+		 * We need to use the JRE implementation to get the zip comment, as the Apache-Commons implementation doesn't
+		 * give us that option? This is really stupid. but let's live with it. (And we need to use the Apache-Commons
+		 * zip implementation, as it gives us the information we need to access the actual raw contents of the zip
+		 * container).
+		 */
+		String resourceID = null;
+		try {
+
+			// Now look for container.description file.
+			ZipArchiveEntry entry = zip.getEntry(AFF4.FILEDESCRIPTOR);
+			if (entry != null) {
+				try (InputStream is = zip.getInputStream(entry)) {
+					resourceID = IOUtils.toString(is, StandardCharsets.UTF_8);
+				}
+			}
+		} catch (IOException e) {
+			logger.error("Failed reading '" + AFF4.FILEDESCRIPTOR + "' with error: " + e.getMessage());
+		}
+
+		return resourceID;
+	}
+
+
+
+
+	/**
 	 * Get the resource ID string from the AFF4 container.
 	 * <p>
 	 * This implementation will use both the comment and contents of the 'container.description' file with the latter
@@ -129,7 +189,8 @@ public class Containers {
 			ZipEntry entry = zip.getEntry(AFF4.FILEDESCRIPTOR);
 			if (entry != null) {
 				try (InputStream is = zip.getInputStream(entry)) {
-					resourceID = IOUtils.toString(is, StandardCharsets.UTF_8);
+
+					resourceID = IOUtils.toString(is, StandardCharsets.UTF_8).replace("\r","").replace("\n","");
 				}
 			}
 		} catch (ZipException e) {
@@ -141,7 +202,8 @@ public class Containers {
 				ZipArchiveEntry zae = aZip.getEntry(AFF4.FILEDESCRIPTOR);
 				if (zae != null) {
 					try (InputStream is = aZip.getInputStream(zae)) {
-						resourceID = IOUtils.toString(is, StandardCharsets.UTF_8);
+						
+						resourceID = IOUtils.toString(is, StandardCharsets.UTF_8).replace("\r","").replace("\n","");
 					}
 				}
 			} catch (IOException e1) {
@@ -175,6 +237,17 @@ public class Containers {
 		}
 		return new LightResolver(AFF4.generateID(), path);
 	}
+
+	/**
+	 *
+	 * @return
+	 * @throws IOException
+	 */
+	public static IAFF4Resolver createResolver() throws IOException {
+				return new LightResolver(AFF4.generateID());
+	}
+
+
 
 	/**
 	 * Determine if a AFF4 container based on the filename.

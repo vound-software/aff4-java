@@ -57,7 +57,7 @@ public class LZ4Compression implements CompressionCodec {
 			// implementation.
 			lz4factory = LZ4Factory.fastestInstance();
 		} else {
-			// Use the Java unsage implementation.
+			// Use the Java usage implementation.
 			lz4factory = LZ4Factory.fastestJavaInstance();
 		}
 		decompressor = lz4factory.safeDecompressor();

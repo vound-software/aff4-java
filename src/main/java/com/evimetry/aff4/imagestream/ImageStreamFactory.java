@@ -41,11 +41,12 @@ public class ImageStreamFactory {
 	public static IAFF4ImageStream createUnknownStream() {
 		return new RepeatedImageStream(AFF4Lexicon.UnknownData.getValue());
 	}
-	
+
 	/**
 	 * Create an aff4:UnknownData Image Stream
-	 * 
-	 * @return the constructed image stream.
+	 *
+	 * @param resource
+	 * @return
 	 */
 	public static IAFF4ImageStream createUnknownStream(String resource) {
 		return new RepeatedImageStream(resource, "UNKNOWN");
@@ -66,6 +67,8 @@ public class ImageStreamFactory {
 	 * @param symbol The symbol for the image stream
 	 * @return the constructed image stream.
 	 */
+
+
 	public static IAFF4ImageStream createSymbolicStream(int symbol) {
 		return new SymbolicImageStream(AFF4Lexicon.SymbolicData.getValue() + Integer.toHexString(symbol),
 				(byte) symbol);

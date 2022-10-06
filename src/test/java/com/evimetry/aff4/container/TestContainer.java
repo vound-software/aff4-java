@@ -26,6 +26,7 @@ import java.nio.file.Paths;
 import java.time.Instant;
 import java.util.Collection;
 
+import org.junit.Ignore;
 import org.junit.Test;
 
 import com.evimetry.aff4.AFF4Lexicon;
@@ -113,6 +114,8 @@ public class TestContainer {
 		}
 	}
 	
+	// Missing test file
+	@Ignore
 	@Test
 	public void testContainerBlank() throws UnsupportedOperationException, IOException, Exception {
 		URL url = TestContainer.class.getResource("/blank.aff4");
@@ -131,7 +134,9 @@ public class TestContainer {
 			assertTrue(time.isEmpty());
 		}
 	}
-	
+
+	//Missing test file
+	@Ignore
 	@Test
 	public void testContainerBlank5() throws UnsupportedOperationException, IOException, Exception {
 		URL url = TestContainer.class.getResource("/blank5.aff4");

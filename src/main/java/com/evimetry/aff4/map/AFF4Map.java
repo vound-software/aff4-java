@@ -221,6 +221,11 @@ public class AFF4Map extends AFF4Resource implements IAFF4Map, SeekableByteChann
 		if (point == null) {
 			point = map.findPrevious(position);
 		}
+
+		if(point == null){
+			throw new IOException("Could not locate data region");
+		}
+
 		// get the delta between the map point, and our current position.
 		long delta = position - point.getOffset();
 		SeekableByteChannel stream = point.getStream();

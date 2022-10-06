@@ -17,22 +17,17 @@
 
 package com.evimetry.aff4.imagestream;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
-
-import java.io.File;
-import java.io.IOException;
-import java.net.URL;
-import java.nio.ByteBuffer;
-import java.nio.ByteOrder;
-import java.nio.channels.SeekableByteChannel;
-import java.nio.file.Paths;
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
-import java.util.Arrays;
-import java.util.Collection;
-
+import com.evimetry.aff4.AFF4Lexicon;
+import com.evimetry.aff4.Containers;
+import com.evimetry.aff4.IAFF4Container;
+import com.evimetry.aff4.IAFF4ImageStream;
+import com.evimetry.aff4.container.AFF4ZipContainer;
+import com.evimetry.aff4.container.TestContainer;
 import org.apache.commons.codec.binary.Hex;
+import org.apache.commons.io.IOUtils;
+import org.apache.jena.rdf.model.ResIterator;
+import org.apache.jena.rdf.model.Resource;
+import org.apache.jena.vocabulary.RDF;
 import org.junit.FixMethodOrder;
 import org.junit.Rule;
 import org.junit.Test;
@@ -41,18 +36,31 @@ import org.junit.runner.RunWith;
 import org.junit.runners.MethodSorters;
 import org.junit.runners.Parameterized;
 import org.junit.runners.Parameterized.Parameters;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
-import com.evimetry.aff4.AFF4;
-import com.evimetry.aff4.AFF4Lexicon;
-import com.evimetry.aff4.Containers;
-import com.evimetry.aff4.IAFF4Container;
-import com.evimetry.aff4.IAFF4ImageStream;
-import com.evimetry.aff4.container.AFF4ZipContainer;
-import com.evimetry.aff4.container.TestContainer;
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.net.URL;
+import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
+import java.nio.channels.SeekableByteChannel;
+import java.nio.file.Paths;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.List;
+
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 
 @FixMethodOrder(MethodSorters.NAME_ASCENDING)
 @RunWith(Parameterized.class)
 public class TestImageStream {
+	private final static Logger logger = LoggerFactory.getLogger(TestImageStream.class);
 
 	private final String file_1 = "/Base-Linear.aff4";
 	private final String container_1 = "aff4://685e15cc-d0fb-4dbc-ba47-48117fc77044";
@@ -74,44 +82,47 @@ public class TestImageStream {
 	private final String stream_4 = "aff4://e53a108a-bb2e-41f4-ab2e-28fe4ef578c1";
 	private final String streamSHA1_4 = "fbac22cca549310bc5df03b7560afcf490995fbb";
 
+	private final String encryptedFile = "/encrypted/test-password.aff4";
+
 	/**
 	 * The size of the read to perform.
 	 */
 	private final long readSize;
-
-	@Parameters(name = "read={0}")
-	public static Collection<Object> data() {
-		return Arrays.asList( //
-				512, //
-				571, //
-				1024, //
-				2048, //
-				4096, //
-				AFF4.DEFAULT_CHUNK_SIZE - 1, //
-				AFF4.DEFAULT_CHUNK_SIZE, //
-				AFF4.DEFAULT_CHUNK_SIZE + 1, //
-				512 * 1024 - 1, //
-				512 * 1024, //
-				512 * 1024 + 1, //
-				1024 * 1024, //
-				1024 * 1024 + 1, //
-				32l * 1024l * 1024l);
-	}
-
 	@Rule
 	public TestName name = new TestName();
 
 	public TestImageStream(long readSize) {
 		this.readSize = readSize;
 	}
-	
+
+	@Parameters(name = "read={0}")
+	public static Collection<Object> data() {
+		return Arrays.asList( //
+				  512); //,
+//				  571, //
+//				  1024, //
+//				  2048, //
+//				  4096, //
+//				  AFF4.DEFAULT_CHUNK_SIZE - 1, //
+//				  AFF4.DEFAULT_CHUNK_SIZE, //
+//				  AFF4.DEFAULT_CHUNK_SIZE + 1, //
+//				  512 * 1024 - 1, //
+//				  512 * 1024, //
+//				  512 * 1024 + 1, //
+//				  1024 * 1024, //
+//				  1024 * 1024 + 1, //
+//				  32l * 1024l * 1024l);
+	}
+
 	/**
 	 * Test for accessing the a map index entry
-	 * 
+	 *
 	 * @throws Exception something went wrong.
 	 */
 	@Test
-	public void testLinearImageStreamContents() throws Exception {
+	public void testLinearImageStreamContents()
+			  throws Exception
+	{
 		URL url = TestContainer.class.getResource(file_1);
 		File file = Paths.get(url.toURI()).toFile();
 		try (IAFF4Container container = Containers.open(file)) {
@@ -127,11 +138,13 @@ public class TestImageStream {
 
 	/**
 	 * Test for accessing the a map index entry
-	 * 
+	 *
 	 * @throws Exception something went wrong.
 	 */
 	@Test
-	public void testAllocatedImageStreamContents() throws Exception {
+	public void testAllocatedImageStreamContents()
+			  throws Exception
+	{
 		URL url = TestContainer.class.getResource(file_2);
 		File file = Paths.get(url.toURI()).toFile();
 		try (IAFF4Container container = Containers.open(file)) {
@@ -145,13 +158,61 @@ public class TestImageStream {
 		}
 	}
 
+
 	/**
 	 * Test for accessing the a map index entry
-	 * 
+	 *
 	 * @throws Exception something went wrong.
 	 */
 	@Test
-	public void testReadErrorImageStreamContents() throws Exception {
+	public void testEncryptedImageStreamContents()
+			  throws Exception
+	{
+		URL url = TestContainer.class.getResource(encryptedFile);
+		File file = Paths.get(url.toURI()).toFile();
+		try (IAFF4Container container = Containers.open(file)) {
+
+			@SuppressWarnings("resource")
+			AFF4ZipContainer con = (AFF4ZipContainer) container;
+			List<IAFF4ImageStream> streams = new ArrayList<>();
+			ResIterator resources = con.getModel().listResourcesWithProperty(RDF.type, con.getModel().createResource(AFF4Lexicon.EncryptedStream.getValue()));
+
+			while (resources.hasNext()) {
+
+				FileOutputStream fos = new FileOutputStream(new File("c:\\tmp\\aff4.out.aff4"));
+				Resource res = resources.next();
+				try {
+					IAFF4ImageStream stream = con.getEncryptedImageStream(res.toString(),"password");
+
+					SeekableByteChannel sc = stream.getChannel();
+
+					int read =1;
+
+					while(read > 0) {
+						ByteBuffer block = ByteBuffer.allocate(512);
+
+						read = IOUtils.read(sc, block);
+						if (read > 0) {
+							fos.write(block.array(), 0, read);
+						}
+					}
+				}
+				catch (IOException ioe) {
+					logger.error("Error creating stream for  " + res.toString(), ioe);
+				}
+			}
+		}
+	}
+
+	/**
+	 * Test for accessing the a map index entry
+	 *
+	 * @throws Exception something went wrong.
+	 */
+	@Test
+	public void testReadErrorImageStreamContents()
+			  throws Exception
+	{
 		URL url = TestContainer.class.getResource(file_3);
 		File file = Paths.get(url.toURI()).toFile();
 		try (IAFF4Container container = Containers.open(file)) {
@@ -167,11 +228,13 @@ public class TestImageStream {
 
 	/**
 	 * Test for accessing the a map index entry
-	 * 
+	 *
 	 * @throws Exception something went wrong.
 	 */
 	@Test
-	public void testAllHashsImageStreamContents() throws Exception {
+	public void testAllHashsImageStreamContents()
+			  throws Exception
+	{
 		URL url = TestContainer.class.getResource(file_4);
 		File file = Paths.get(url.toURI()).toFile();
 		try (IAFF4Container container = Containers.open(file)) {
@@ -187,20 +250,21 @@ public class TestImageStream {
 
 	/**
 	 * Read the contents of the given segment, and compare to a sha1 of the contents.
-	 * 
-	 * @param segment The segment to read
-	 * @param sha1 The expected sha1 of the contents.
+	 *
+	 * @param segment  The segment to read
+	 * @param sha1     The expected sha1 of the contents.
 	 * @param readSize The size of reads to perform.
-	 * @throws IOException IO Failed.
+	 * @throws IOException              IO Failed.
 	 * @throws NoSuchAlgorithmException
 	 */
 	private void testStreamContentsRead(IAFF4ImageStream segment, String sha1, long readSize)
-			throws IOException, NoSuchAlgorithmException {
+			  throws IOException, NoSuchAlgorithmException
+	{
 		Collection<Object> rdfType = segment.getProperty(AFF4Lexicon.RDFType);
-		assertEquals(AFF4Lexicon.ImageStream, rdfType.iterator().next());
+		assertEquals(AFF4Lexicon.EncryptedStream, rdfType.iterator().next());
 		try (SeekableByteChannel channel = segment.getChannel()) {
 			MessageDigest md = MessageDigest.getInstance("SHA-1");
-			ByteBuffer buffer = ByteBuffer.allocateDirect((int)readSize).order(ByteOrder.LITTLE_ENDIAN);
+			ByteBuffer buffer = ByteBuffer.allocateDirect((int) readSize).order(ByteOrder.LITTLE_ENDIAN);
 			long length = channel.size();
 			while (length > channel.position()) {
 				readFully(channel, buffer);
@@ -215,12 +279,14 @@ public class TestImageStream {
 
 	/**
 	 * Read fully from the channel into the buffer
-	 * 
+	 *
 	 * @param channel The channel to read from
-	 * @param buffer The buffer to read into
+	 * @param buffer  The buffer to read into
 	 * @throws IOException If reading failed.
 	 */
-	private void readFully(SeekableByteChannel channel, ByteBuffer buffer) throws IOException {
+	private void readFully(SeekableByteChannel channel, ByteBuffer buffer)
+			  throws IOException
+	{
 		int toRead = buffer.remaining();
 		while (toRead != 0) {
 			int read = channel.read(buffer);

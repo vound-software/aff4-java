@@ -79,6 +79,11 @@ public enum AFF4Lexicon {
 	MemoryImage(AFF4.AFF4_BASE_URI + "MemoryImage"),
 
 	/**
+	 * The object is an Image of the file.
+	 */
+	FileImage(AFF4.AFF4_BASE_URI + "FileImage"),
+
+	/**
 	 * Defined ImageStream that contains Zeros.
 	 */
 	Zero(AFF4.AFF4_BASE_URI + "Zero"),
@@ -161,6 +166,12 @@ public enum AFF4Lexicon {
 	 * The filename for any segment URI.
 	 */
 	fileName(AFF4.AFF4_BASE_URI + "fileName"),
+
+	/**
+	 * The filename for any segment URI.
+	 */
+		original_filename(AFF4.AFF4_BASE_URI + "original_filename"),
+
 	/**
 	 * The Map or ImageStream which corresponds to the bytestream of the Image
 	 */
@@ -304,31 +315,105 @@ public enum AFF4Lexicon {
 	/**
 	 * APFS Container type
 	 */
-	APFSContainerImage(AFF4.BBT_BASE_URI + "APFSContainerImage"),
+	APFSContainerImage(BBT.BASE_URI + "APFSContainerImage"),
 	/**
 	 * APFS Container type
 	 */
-	APFSContainerType(AFF4.BBT_BASE_URI + "APFSContainerType"),
+	APFSContainerType(BBT.BASE_URI + "APFSContainerType"),
 	/**
 	 * APFS Container type (T2)
 	 */
-	APFST2ContainerType(AFF4.BBT_BASE_URI + "APFST2ContainerType"),
+	APFST2ContainerType(BBT.BASE_URI + "APFST2ContainerType"),
 	/**
 	 * APFS Container type (Fusion)
 	 */
-	APFSFusionContainerType(AFF4.BBT_BASE_URI + "APFSFusionContainerType"),
+	APFSFusionContainerType(BBT.BASE_URI + "APFSFusionContainerType"),
 	/**
 	 * APFS Container type (Standard disk)
 	 */
-	APFSStandardContainerType(AFF4.BBT_BASE_URI + "APFSStandardContainerType"),
+	APFSStandardContainerType(BBT.BASE_URI + "APFSStandardContainerType"),
 	/**
 	 * Volume/Disk contains extents.
 	 */
-	ContainsExtents(AFF4.BBT_BASE_URI + "ContainsExtents"),
+	ContainsExtents(BBT.BASE_URI + "ContainsExtents"),
 	/**
 	 * Volume/Disk contains unallocated regions (sparse).
 	 */
-	ContainsUnallocated(AFF4.BBT_BASE_URI + "ContainsUnallocated");
+	ContainsUnallocated(BBT.BASE_URI + "ContainsUnallocated"),
+
+
+	/**
+	 * The original unencoded file path and name of a logical evidence object
+	 */
+	OriginalFileName(AFF4.AFF4_BASE_URI+"originalFileName"),
+
+	/**
+	 * The birth time of a file's content and metadata.
+	 */
+
+	BirthTime(AFF4.AFF4_BASE_URI+"birthTime"),
+
+	/**
+	 * 	The last modified time of a file's content.
+	 */
+
+	LastWritten (AFF4.AFF4_BASE_URI+"lastWritten"),
+
+	/**
+	 * 	The last modified time of a file's filesystem metadata
+	 */
+	RecordChanged(AFF4.AFF4_BASE_URI+"recordChanged"),
+
+	/**
+	 * 	The last access time of a file's content.
+	 */
+	LastAccessed( AFF4.AFF4_BASE_URI+"lastAccessed"),
+
+	/**
+	 *  	Class representing a suspect folder
+	 */
+	Folder(AFF4.AFF4_BASE_URI+"Folder"),
+
+	/**
+	 *  	Class representing a suspect folder for logical images
+	 */
+	FolderImage(AFF4.AFF4_BASE_URI+"FolderImage"),
+
+	/**
+	 * 	Property representing the FilesImages contained in a Folder
+	 **/
+	Child(AFF4.AFF4_BASE_URI+"child"	),
+
+	/**
+	 * Class representing a logical acquisition activity
+	 */
+	LogicalAcquisitionTask(AFF4.AFF4_BASE_URI+"LogicalAcquisitionTask"),
+
+	/**
+	 * ======================= intella ver 2.0 encrypted container ============================
+	 */
+	FileSystemRoot(AFF4.AFF4_BASE_URI+"filesystemRoot"),
+
+	EncryptedStream(AFF4.AFF4_BASE_URI+"EncryptedStream"),
+
+	KeyBag(AFF4.AFF4_BASE_URI+"keyBag"),
+
+	passwordWrappedKeyBag(AFF4.AFF4_BASE_URI+"PasswordWrappedKeyBag"),
+
+	iterations(AFF4.AFF4_BASE_URI+"iterations"),
+
+	keySizeInBytes(AFF4.AFF4_BASE_URI+"keySizeInBytes"),
+
+	salt(AFF4.AFF4_BASE_URI+"salt"),
+
+	wrappedKey(AFF4.AFF4_BASE_URI+"wrappedKey"),
+
+	certWrappedKeyBag(AFF4.AFF4_BASE_URI+"PublicKeyEncryptedKeyBag"),
+
+	x509SubjectName(AFF4.AFF4_BASE_URI+"x509SubjectName"),
+
+	serialNumber(AFF4.AFF4_BASE_URI+"serialNumber");
+
 
 	/**
 	 * Map of all values to activities.

@@ -16,18 +16,19 @@
  */
 package com.evimetry.aff4.struct;
 
-import java.io.IOException;
-import java.nio.ByteBuffer;
-import java.nio.ByteOrder;
-import java.nio.channels.FileChannel;
-import java.util.function.Function;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
+import com.evimetry.aff4.IAFF4ImageStream;
 import com.evimetry.aff4.codec.CompressionCodec;
 import com.evimetry.aff4.container.AFF4ZipContainer;
 import com.github.benmanes.caffeine.cache.Cache;
+import org.apache.commons.compress.archivers.zip.ZipMethod;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
+import java.nio.channels.SeekableByteChannel;
+import java.util.function.Function;
 
 /**
  * Function for loading a Chunk into memory for the given offset.
@@ -43,7 +44,7 @@ public class ChunkLoaderFunction implements Function<Long, ByteBuffer> {
 	/**
 	 * The channel to load our buffer from
 	 */
-	private final FileChannel channel;
+	private final SeekableByteChannel channel;
 	/**
 	 * The bevvy cache
 	 */
@@ -56,6 +57,12 @@ public class ChunkLoaderFunction implements Function<Long, ByteBuffer> {
 	 * The chunksize
 	 */
 	private final long chunkSize;
+
+	/**
+	 * The total size og element
+	 * Ths is introduced because axiom does not compress binary entries even if it marks them as compressed. and stores them in one chunk
+	 */
+	private final long totalSize;
 	/**
 	 * The number of chunks per segment
 	 */
@@ -65,19 +72,24 @@ public class ChunkLoaderFunction implements Function<Long, ByteBuffer> {
 	 */
 	private final CompressionCodec codec;
 
+
+	private final Decryptor decryptor;
+
 	/**
 	 * Function for loading a Chunk into memory for the given offset.
-	 * 
-	 * @param parent The parent container
-	 * @param channel The channel to load our buffer from
-	 * @param bevvyCache The bevvy cache
-	 * @param bevvyLoader Loader function for the bevvy cache.
-	 * @param chunkSize The chunksize
-	 * @param chunksInSegment The number of chunks per segment
-	 * @param codec The compression codec to decompress raw buffers.
+	 *
+	 * @param parent
+	 * @param channel
+	 * @param bevvyCache
+	 * @param bevvyLoader
+	 * @param chunkSize
+	 * @param chunksInSegment
+	 * @param codec
+	 * @param decryptor
 	 */
-	public ChunkLoaderFunction(AFF4ZipContainer parent, FileChannel channel, Cache<Integer, BevvyIndex> bevvyCache,
-			BevvyIndexLoaderFunction bevvyLoader, int chunkSize, int chunksInSegment, CompressionCodec codec) {
+	public ChunkLoaderFunction(AFF4ZipContainer parent, SeekableByteChannel channel, Cache<Integer, BevvyIndex> bevvyCache,
+			  BevvyIndexLoaderFunction bevvyLoader, int chunkSize, int chunksInSegment,long totalSize, CompressionCodec codec, Decryptor decryptor)
+	{
 		this.parent = parent;
 		this.channel = channel;
 		this.bevvyCache = bevvyCache;
@@ -85,6 +97,8 @@ public class ChunkLoaderFunction implements Function<Long, ByteBuffer> {
 		this.chunksInSegment = chunksInSegment;
 		this.chunkSize = chunkSize;
 		this.codec = codec;
+		this.decryptor = decryptor;
+		this.totalSize = totalSize;
 	}
 
 	@Override
@@ -103,15 +117,33 @@ public class ChunkLoaderFunction implements Function<Long, ByteBuffer> {
 			logger.error("Failed to read bevvy index point");
 			return null;
 		}
-		long chunkOffset = index.getOffset() + point.getOffset();
+
 		long chunkLength = point.getLength();
+		SeekableByteChannel sbc = channel;
+		long chunkOffset = index.getEntry().getDataOffset() + point.getOffset();
+		ByteBuffer buffer = ByteBuffer.allocateDirect((int) chunkLength).order(ByteOrder.LITTLE_ENDIAN);
+
+		if (index.getEntry().getMethod() != ZipMethod.STORED.getCode()) {
+			try {
+				IAFF4ImageStream stream = parent.getSegmentNoSanitize(index.getEntry().getName());
+				sbc = stream.getChannel();
+				chunkOffset = point.getOffset();
+			}
+			catch (IOException e) {
+				logger.error(e.getMessage(), e);
+				return null;
+			}
+		}
+
 		try {
-			ByteBuffer buffer = ByteBuffer.allocateDirect((int) chunkLength).order(ByteOrder.LITTLE_ENDIAN);
-			int toRead = (int)chunkLength;
+			int toRead = (int) chunkLength;
 			// In all typical circumstances this should be a single read, but be careful otherwise.
-			while(toRead >= 0){
-				int read = channel.read(buffer, chunkOffset);
-				if(read <= 0){
+			while (toRead > 0) {
+
+				sbc.position(chunkOffset);
+				int read = sbc.read(buffer);
+				
+				if (read <= 0) {
 					break;
 				}
 				toRead -= read;
@@ -122,13 +154,27 @@ public class ChunkLoaderFunction implements Function<Long, ByteBuffer> {
 				throw new IOException("Failed to read");
 			}
 			// now decompress if the buffer is not chunk length;
-			if (chunkLength != chunkSize) {
-				return codec.decompress(buffer);
+			if (chunkLength != chunkSize) {   
+				try {
+					buffer = codec.decompress(buffer);
+				}catch(IOException ioe){
+					// Fixing axiom not compressing entries and providing wrong compression info in turtle. so we skip error if block is equal total size. Just allowing decompression to
+					// happen in case there is some compression info (miraculously) to get it removed .
+					if(offset+chunkLength != totalSize){
+						throw ioe;
+					}
+				}
 			}
+			if (decryptor != null) {
+				buffer = decryptor.decrypt(buffer, bevvyID * chunksInSegment + chunkID);
+			}
+
 			return buffer;
-		} catch (Throwable e) {
+		}
+		catch (Throwable e) {
 			logger.error(e.getMessage(), e);
 		}
 		return null;
 	}
+
 }

@@ -16,10 +16,43 @@
  */
 package com.evimetry.aff4.container;
 
+import com.evimetry.aff4.AFF4;
+import com.evimetry.aff4.AFF4Lexicon;
+import com.evimetry.aff4.BBT;
+import com.evimetry.aff4.IAFF4Container;
+import com.evimetry.aff4.IAFF4Image;
+import com.evimetry.aff4.IAFF4ImageStream;
+import com.evimetry.aff4.IAFF4Map;
+import com.evimetry.aff4.IAFF4Resolver;
+import com.evimetry.aff4.IAFF4Resource;
+import com.evimetry.aff4.image.AFF4Image;
+import com.evimetry.aff4.imagestream.AFF4ImageStream;
+import com.evimetry.aff4.imagestream.EncryptedImageStream;
+import com.evimetry.aff4.imagestream.ImageStreamFactory;
+import com.evimetry.aff4.imagestream.SymbolicImageStream;
+import com.evimetry.aff4.imagestream.ZipSegmentImageCompressedStream;
+import com.evimetry.aff4.imagestream.ZipSegmentImageStream;
+import com.evimetry.aff4.map.AFF4Map;
+import com.evimetry.aff4.rdf.NameCodec;
+import com.evimetry.aff4.rdf.RDFUtil;
+import com.evimetry.aff4.resource.AFF4Resource;
+import org.apache.commons.compress.archivers.zip.ZipArchiveEntry;
+import org.apache.commons.compress.archivers.zip.ZipFile;
+import org.apache.commons.compress.archivers.zip.ZipMethod;
+import org.apache.jena.datatypes.xsd.XSDDatatype;
+import org.apache.jena.rdf.model.Model;
+import org.apache.jena.rdf.model.ModelFactory;
+import org.apache.jena.rdf.model.ResIterator;
+import org.apache.jena.rdf.model.Resource;
+import org.apache.jena.vocabulary.RDF;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.channels.FileChannel;
+import java.nio.channels.SeekableByteChannel;
 import java.nio.file.StandardOpenOption;
 import java.time.Instant;
 import java.util.ArrayList;
@@ -34,42 +67,11 @@ import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.zip.ZipException;
 
-import org.apache.commons.compress.archivers.zip.ZipArchiveEntry;
-import org.apache.commons.compress.archivers.zip.ZipFile;
-import org.apache.commons.compress.archivers.zip.ZipMethod;
-import org.apache.jena.datatypes.xsd.XSDDatatype;
-import org.apache.jena.rdf.model.Model;
-import org.apache.jena.rdf.model.ModelFactory;
-import org.apache.jena.rdf.model.ResIterator;
-import org.apache.jena.rdf.model.Resource;
-import org.apache.jena.vocabulary.RDF;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import com.evimetry.aff4.AFF4;
-import com.evimetry.aff4.AFF4Lexicon;
-import com.evimetry.aff4.IAFF4Container;
-import com.evimetry.aff4.IAFF4Image;
-import com.evimetry.aff4.IAFF4ImageStream;
-import com.evimetry.aff4.IAFF4Map;
-import com.evimetry.aff4.IAFF4Resolver;
-import com.evimetry.aff4.IAFF4Resource;
-import com.evimetry.aff4.image.AFF4Image;
-import com.evimetry.aff4.imagestream.AFF4ImageStream;
-import com.evimetry.aff4.imagestream.ImageStreamFactory;
-import com.evimetry.aff4.imagestream.SymbolicImageStream;
-import com.evimetry.aff4.imagestream.ZipSegmentImageCompressedStream;
-import com.evimetry.aff4.imagestream.ZipSegmentImageStream;
-import com.evimetry.aff4.map.AFF4Map;
-import com.evimetry.aff4.rdf.NameCodec;
-import com.evimetry.aff4.rdf.RDFUtil;
-import com.evimetry.aff4.resource.AFF4Resource;
-
 /**
  * AFF4 Container implementation based on a Zip file.
  */
 public class AFF4ZipContainer extends AFF4Resource implements IAFF4Container {
-	
+
 	private final static Logger logger = LoggerFactory.getLogger(AFF4ZipContainer.class);
 	/**
 	 * The underlying zip file we are using.
@@ -82,7 +84,7 @@ public class AFF4ZipContainer extends AFF4Resource implements IAFF4Container {
 	/**
 	 * The parent channel that is used to perform actual IO.
 	 */
-	private final FileChannel channel;
+	private final SeekableByteChannel channel;
 	/**
 	 * The closed flag for this implementation.
 	 */
@@ -91,6 +93,7 @@ public class AFF4ZipContainer extends AFF4Resource implements IAFF4Container {
 	 * The RDF Model.
 	 */
 	private final Model model;
+	private final Set<IAFF4ImageStream> openStreams = Collections.synchronizedSet(new HashSet<>());
 	/**
 	 * An external resolver that may be queried for the aff4 objects that are not present in this container.
 	 */
@@ -98,17 +101,20 @@ public class AFF4ZipContainer extends AFF4Resource implements IAFF4Container {
 	/**
 	 * Collection of open streams.
 	 */
-	private final Set<IAFF4ImageStream> openStreams = Collections.synchronizedSet(new HashSet<>());
+
+	private String containerVersion;
 
 	/**
 	 * Create a new AFF4 Container based on the given file information
-	 * 
+	 *
 	 * @param resource The resource of the AFF4 Container
-	 * @param parent The parent file.
-	 * @param zip The Zip Container for this file.
+	 * @param parent   The parent file.
+	 * @param zip      The Zip Container for this file.
 	 * @throws IOException If reading the contents of the parent container or entries fail.
 	 */
-	public AFF4ZipContainer(String resource, File parent, ZipFile zip) throws IOException {
+	public AFF4ZipContainer(String resource, File parent, ZipFile zip)
+			  throws IOException
+	{
 		super(resource);
 		this.parentFile = parent;
 		this.zip = zip;
@@ -121,23 +127,58 @@ public class AFF4ZipContainer extends AFF4Resource implements IAFF4Container {
 		if (time.isPresent()) {
 			properties.put(AFF4Lexicon.CreationTime, Collections.singletonList(time.get()));
 		}
+
+
 	}
+
+	/**
+	 * Create new container out of stream -- used for encrypted stream procesing
+    *
+	 * @param resource
+	 * @param zip
+	 * @throws IOException
+	 */
+
+	public AFF4ZipContainer(String resource,ZipFile zip, SeekableByteChannel sbc)
+			  throws IOException
+	{
+		super(resource);
+		this.parentFile = null;
+		this.zip = zip;
+		this.channel = sbc;
+		setBasicProperties();
+		loadVersionInformation();
+		this.model = loadInformation();
+		// Set the creation time property.
+		Optional<Instant> time = RDFUtil.readDateTimeProperty(model, getResourceID(), AFF4Lexicon.CreationTime);
+		if (time.isPresent()) {
+			properties.put(AFF4Lexicon.CreationTime, Collections.singletonList(time.get()));
+		}
+
+
+	}
+
+
 
 	/**
 	 * The collection of base properties for this container.
 	 */
 	private void setBasicProperties() {
 		properties.put(AFF4Lexicon.RDFType, Collections.singletonList(AFF4Lexicon.ZipVolume));
-		properties.put(AFF4Lexicon.stored, Collections.singletonList(parentFile.getAbsolutePath()));
+		if (this.parentFile != null){
+			properties.put(AFF4Lexicon.stored, Collections.singletonList(parentFile.getAbsolutePath()));
+		}
 	}
 
 	/**
 	 * Load the version.txt file and add to the containers properties.
-	 * 
+	 *
 	 * @throws ZipException Reading the zip container or contents failed.
-	 * @throws IOException Reading the zip container or contents failed.
+	 * @throws IOException  Reading the zip container or contents failed.
 	 */
-	private void loadVersionInformation() throws ZipException, IOException {
+	private void loadVersionInformation()
+			  throws ZipException, IOException
+	{
 		ZipArchiveEntry entry = zip.getEntry(AFF4.VERSIONDESCRIPTIONFILE);
 		if (entry != null) {
 			try (InputStream stream = zip.getInputStream(entry)) {
@@ -146,10 +187,11 @@ public class AFF4ZipContainer extends AFF4Resource implements IAFF4Container {
 				setPropety(prop, "tool", AFF4Lexicon.Tool);
 				setPropety(prop, "major", AFF4Lexicon.majorVersion);
 				setPropety(prop, "minor", AFF4Lexicon.minorVersion);
-				if(!checkSupportedVersion()) {
+				if (!checkSupportedVersion()) {
 					try {
 						close();
-					} catch (Exception e) {
+					}
+					catch (Exception e) {
 						logger.error(e.getMessage(), e);
 					}
 					throw new IOException("AFF4 File appears to be of an unsupported version.");
@@ -159,7 +201,8 @@ public class AFF4ZipContainer extends AFF4Resource implements IAFF4Container {
 		}
 		try {
 			close();
-		} catch (Exception e) {
+		}
+		catch (Exception e) {
 			logger.error(e.getMessage(), e);
 		}
 		throw new IOException("File does not appear to be an AFF4 File.");
@@ -167,10 +210,10 @@ public class AFF4ZipContainer extends AFF4Resource implements IAFF4Container {
 
 	/**
 	 * Set the given property if exists in the input
-	 * 
-	 * @param input The input Properties
+	 *
+	 * @param input    The input Properties
 	 * @param property The property to enquire
-	 * @param key The key to use to insert into the main properties.
+	 * @param key      The key to use to insert into the main properties.
 	 */
 	private void setPropety(Properties input, String property, AFF4Lexicon key) {
 		String v = input.getProperty(property);
@@ -181,12 +224,14 @@ public class AFF4ZipContainer extends AFF4Resource implements IAFF4Container {
 
 	/**
 	 * Read the information.turtle file and create the RDF model.
-	 * 
+	 *
 	 * @return The RDF model created by reading the information.turtle file.
 	 * @throws ZipException Reading the zip container or contents failed.
-	 * @throws IOException Reading the zip container or contents failed.
+	 * @throws IOException  Reading the zip container or contents failed.
 	 */
-	private Model loadInformation() throws ZipException, IOException {
+	private Model loadInformation()
+			  throws ZipException, IOException
+	{
 		/*
 		 * Attempt to load the RDF model from the zip container.
 		 */
@@ -198,23 +243,27 @@ public class AFF4ZipContainer extends AFF4Resource implements IAFF4Container {
 				model.setNsPrefix("aff4", AFF4.AFF4_BASE_URI);
 				model.setNsPrefix("rdf", AFF4.AFF4_RDF_PREFIX);
 				model.setNsPrefix("xsd", XSDDatatype.XSD + "#");
+				model.setNsPrefix("bbt", AFF4.AFF4_BASE_URI);
 				return model;
 			}
 		}
 		try {
 			close();
-		} catch (Exception e) {
+		}
+		catch (Exception e) {
 			logger.error(e.getMessage(), e);
 		}
 		throw new IOException("File does not appear to be an AFF4 File.");
 	}
-	
+
 	/**
 	 * Check is a supported version.
-	 * 
+	 *
 	 * @returns TRUE for supported version.
 	 */
-	private boolean checkSupportedVersion() throws IOException {
+	private boolean checkSupportedVersion()
+			  throws IOException
+	{
 		Collection<Object> major = getProperty(AFF4Lexicon.majorVersion);
 		Collection<Object> minor = getProperty(AFF4Lexicon.minorVersion);
 		if (major.isEmpty() || minor.isEmpty()) {
@@ -223,8 +272,12 @@ public class AFF4ZipContainer extends AFF4Resource implements IAFF4Container {
 		try {
 			long maj = Long.parseLong(major.iterator().next().toString());
 			long min = Long.parseLong(minor.iterator().next().toString());
-			return (maj == 1 && min == 0);
-		} catch (NumberFormatException e) {
+			containerVersion = Long.toString(maj).concat(".").concat(Long.toString(min));
+
+			return (maj == 1 && min < 3);
+
+		}
+		catch (NumberFormatException e) {
 			// Ignore.
 			logger.warn(e.getMessage(), e);
 			return false;
@@ -232,26 +285,30 @@ public class AFF4ZipContainer extends AFF4Resource implements IAFF4Container {
 	}
 
 	@Override
-	public void close() throws Exception {
+	public void close()
+	{
 		if (!closed.getAndSet(true)) {
 			// Close any streams that have been opened through this container.
 			Set<IAFF4ImageStream> streams = new HashSet<>(openStreams);
 			for (IAFF4ImageStream stream : streams) {
 				try {
 					stream.getChannel().close();
-				} catch (IOException e) {
+				}
+				catch (IOException e) {
 					logger.error(e.getMessage(), e);
 				}
 			}
 			// Close the zip container and IO channel.
 			try {
 				zip.close();
-			} catch (IOException e) {
+			}
+			catch (IOException e) {
 				logger.error(e.getMessage(), e);
 			}
 			try {
 				channel.close();
-			} catch (IOException e) {
+			}
+			catch (IOException e) {
 				logger.error(e.getMessage(), e);
 			}
 		}
@@ -260,23 +317,26 @@ public class AFF4ZipContainer extends AFF4Resource implements IAFF4Container {
 	@Override
 	public Iterator<IAFF4Image> getImages() {
 		List<IAFF4Image> images = new ArrayList<>();
-		ResIterator resources = model.listResourcesWithProperty(RDF.type,
-				model.createResource(AFF4Lexicon.Image.getValue()));
+		ResIterator resources = model.listResourcesWithProperty(RDF.type, model.createResource(AFF4Lexicon.Image.getValue()));
 		while (resources.hasNext()) {
 			Resource res = resources.next();
-			images.add(new AFF4Image(res.getURI(), this, model));
+			try {
+				images.add(getImage(res.toString()));
+			}
+			catch (Throwable ioe) {
+			}
 		}
 		return images.iterator();
 	}
 
 	@Override
-	public void setResolver(IAFF4Resolver newResolver) {
-		this.resolver = newResolver;
+	public IAFF4Resolver getResolver() {
+		return resolver;
 	}
 
 	@Override
-	public IAFF4Resolver getResolver() {
-		return resolver;
+	public void setResolver(IAFF4Resolver newResolver) {
+		this.resolver = newResolver;
 	}
 
 	@Override
@@ -293,7 +353,8 @@ public class AFF4ZipContainer extends AFF4Resource implements IAFF4Container {
 		// See if the request is for an aff4:image contained in us.
 		try {
 			r = getImage(resource);
-		} catch (IOException e) {
+		}
+		catch (IOException e) {
 			logger.error(e.getMessage(), e);
 		}
 		if (r != null) {
@@ -303,7 +364,8 @@ public class AFF4ZipContainer extends AFF4Resource implements IAFF4Container {
 		// See if the request is a aff4:map contained in us.
 		try {
 			r = getMap(resource);
-		} catch (IOException e) {
+		}
+		catch (IOException e) {
 			logger.error(e.getMessage(), e);
 		}
 		if (r != null) {
@@ -313,7 +375,8 @@ public class AFF4ZipContainer extends AFF4Resource implements IAFF4Container {
 		// See if the request is for a aff4:imagestream contained in us.
 		try {
 			r = getImageStream(resource);
-		} catch (IOException e) {
+		}
+		catch (IOException e) {
 			logger.error(e.getMessage(), e);
 		}
 		if (r != null) {
@@ -323,7 +386,8 @@ public class AFF4ZipContainer extends AFF4Resource implements IAFF4Container {
 
 		try {
 			r = getSegment(resource);
-		} catch (IOException e) {
+		}
+		catch (IOException e) {
 			logger.error(e.getMessage(), e);
 		}
 		if (r != null) {
@@ -344,9 +408,10 @@ public class AFF4ZipContainer extends AFF4Resource implements IAFF4Container {
 		return true;
 	}
 
+
 	/**
 	 * Get the RDF model as stored in this container.
-	 * 
+	 *
 	 * @return The RDF model.
 	 */
 	public Model getModel() {
@@ -356,17 +421,47 @@ public class AFF4ZipContainer extends AFF4Resource implements IAFF4Container {
 	/**
 	 * Get a segment from this Zip container.
 	 * <p>
-	 * This method is only public for testing purposes. It is recommended to use the {@link #open(String)} method
-	 * instead.
-	 * 
+	 * This method is only public for testing purposes. It is recommended to use the {@link #open(String)} method instead.
+	 *
 	 * @param resource The resource to acquire.
 	 * @return A IAFF4ImageStream of the given segment, or NULL if not found.
 	 * @throws IOException If creating the Zip Segment Image Stream fails.
 	 */
-	public IAFF4ImageStream getSegment(String resource) throws IOException {
+	public IAFF4ImageStream getSegment(String resource)
+			  throws IOException
+	{
 		// Strip any leading URI for this container.
-		String res = sanitizeResource(resource);
-		ZipArchiveEntry entry = zip.getEntry(res);
+		resource = sanitizeResource(resource);
+
+		// sometimes drive name is encoded sometime is not
+		ZipArchiveEntry entry = zip.getEntry(resource);
+
+		if(entry == null) {
+			entry = zip.getEntry(resource.replace(":", "%3A"));
+		}
+
+		if (entry != null) {
+			if (entry.getMethod() != ZipMethod.STORED.getCode()) {
+				if (entry.getSize() < ZipSegmentImageCompressedStream.MAX_BUFFER_SIZE) {
+					IAFF4ImageStream stream = new ZipSegmentImageCompressedStream(resource, this, zip, entry);
+					openStreams.add(stream);
+					return stream;
+				}
+				throw new IOException("Unable to create ImageStream from non-Stored zip segment larger than 32MB");
+			}
+			IAFF4ImageStream stream = new ZipSegmentImageStream(resource, this, channel, entry);
+			openStreams.add(stream);
+			return stream;
+		}
+		return null;
+	}
+
+	public IAFF4ImageStream getSegmentNoSanitize(String resource)
+			  throws IOException
+	{
+
+		ZipArchiveEntry entry = zip.getEntry(resource);
+
 		if (entry != null) {
 			if (entry.getMethod() != ZipMethod.STORED.getCode()) {
 				if (entry.getSize() < ZipSegmentImageCompressedStream.MAX_BUFFER_SIZE) {
@@ -386,14 +481,15 @@ public class AFF4ZipContainer extends AFF4Resource implements IAFF4Container {
 	/**
 	 * Get a ImageStream from this container.
 	 * <p>
-	 * This method is only public for testing purposes. It is recommended to use the {@link #open(String)} method
-	 * instead.
-	 * 
+	 * This method is only public for testing purposes. It is recommended to use the {@link #open(String)} method instead.
+	 *
 	 * @param resource The resource to acquire.
 	 * @return A IAFF4ImageStream of the given segment, or NULL if not found.
 	 * @throws IOException If creating the Image Stream fails.
 	 */
-	public IAFF4ImageStream getImageStream(String resource) throws IOException {
+	public IAFF4ImageStream getImageStream(String resource)
+			  throws IOException
+	{
 
 		// Check for computed streams.
 		if (resource.equals(AFF4Lexicon.Zero.getValue())) {
@@ -419,7 +515,8 @@ public class AFF4ZipContainer extends AFF4Resource implements IAFF4Container {
 					openStreams.add(stream);
 					return stream;
 				}
-			} else {
+			}
+			else {
 				// Check for index file.
 				String res = sanitizeResource(resource + "/00000000.index");
 				ZipArchiveEntry entry = zip.getEntry(res);
@@ -434,17 +531,50 @@ public class AFF4ZipContainer extends AFF4Resource implements IAFF4Container {
 		return null;
 	}
 
+
+	public boolean containsEncryptedImageStream() {
+		ResIterator resources = getEncryptedImageStreams();
+		return resources.hasNext();
+
+	}
+
+	public ResIterator getEncryptedImageStreams() {
+		return model.listResourcesWithProperty(RDF.type, model.createResource(AFF4Lexicon.EncryptedStream.getValue()));
+	}
+
+	public IAFF4ImageStream getEncryptedImageStream(String resource, String password)
+			  throws IOException
+	{
+		Resource rdfResource = model.createResource(resource);
+
+		if (rdfResource.hasProperty(RDF.type, model.createProperty(AFF4Lexicon.EncryptedStream.getValue()))) {
+			// Check for index file.
+			String res = resource + "/00000000.index";
+			ZipArchiveEntry entry = zip.getEntry(res);
+			if (entry != null) {
+				// This is us!
+				IAFF4ImageStream stream = new EncryptedImageStream(resource, this, zip, channel, model, password);
+				openStreams.add(stream);
+				return stream;
+			}
+
+		}
+		return null;
+	}
+
+
 	/**
 	 * Get a aff4:Map from this container.
 	 * <p>
-	 * This method is only public for testing purposes. It is recommended to use the {@link #open(String)} method
-	 * instead.
-	 * 
+	 * This method is only public for testing purposes. It is recommended to use the {@link #open(String)} method instead.
+	 *
 	 * @param resource The resource to acquire.
 	 * @return A IAFF4ImageStream of the given segment, or NULL if not found.
 	 * @throws IOException If creating the Zip Segment Image Stream fails.
 	 */
-	public IAFF4Map getMap(String resource) throws IOException {
+	public IAFF4Map getMap(String resource)
+			  throws IOException
+	{
 		Resource rdfResource = model.createResource(resource);
 		if (rdfResource.hasProperty(RDF.type, model.createProperty(AFF4Lexicon.Map.getValue()))) {
 			return new AFF4Map(resource, resource, this, model);
@@ -455,14 +585,15 @@ public class AFF4ZipContainer extends AFF4Resource implements IAFF4Container {
 	/**
 	 * Get a aff4:image from this container.
 	 * <p>
-	 * This method is only public for testing purposes. It is recommended to use the {@link #open(String)} method
-	 * instead.
-	 * 
+	 * This method is only public for testing purposes. It is recommended to use the {@link #open(String)} method instead.
+	 *
 	 * @param resource The resource to acquire.
 	 * @return A IAFF4ImageStream of the given segment, or NULL if not found.
 	 * @throws IOException If creating the Zip Segment Image Stream fails.
 	 */
-	public IAFF4Image getImage(String resource) throws IOException {
+	public IAFF4Image getImage(String resource)
+			  throws IOException
+	{
 		Resource rdfResource = model.createResource(resource);
 		if (rdfResource.hasProperty(RDF.type, model.createProperty(AFF4Lexicon.Image.getValue()))) {
 			return new AFF4Image(resource, this, model);
@@ -472,14 +603,16 @@ public class AFF4ZipContainer extends AFF4Resource implements IAFF4Container {
 
 	/**
 	 * Attempt to sanitise the given resource string
-	 * 
+	 *
 	 * @param res The resource string to sanitise
 	 * @return The sanitised resource string.
 	 */
-	private String sanitizeResource(String res) {
-		// strip any leading "/"
-		while (res.startsWith("/")) {
-			res = res.substring(1);
+	public String sanitizeResource(String res) {
+
+		if (res.contains(getResourceID())) {
+			while (res.startsWith("/")) {
+				res = res.substring(1);
+			}
 		}
 		if (res.startsWith(getResourceID())) {
 			res = res.substring(getResourceID().length());
@@ -487,15 +620,24 @@ public class AFF4ZipContainer extends AFF4Resource implements IAFF4Container {
 		// Convert any "aff4://" characters to "aff4%3A%2F%2F"
 		res = NameCodec.encode(res);
 		// strip any leading "/"
-		while (res.startsWith("/")) {
-			res = res.substring(1);
+
+		if ("1.0".equals(getContainerVersion())) {
+			while (res.startsWith("/")) {
+				res = res.substring(1);
+			}
 		}
+		else {
+			while (res.startsWith("//")) {
+				res = res.substring(1);
+			}
+		}
+
 		return res;
 	}
 
 	/**
 	 * Notify this container that the ZipImageStream has been closed.
-	 * 
+	 *
 	 * @param stream The stream which has been closed.
 	 */
 	public void release(IAFF4ImageStream stream) {
@@ -522,8 +664,14 @@ public class AFF4ZipContainer extends AFF4Resource implements IAFF4Container {
 		if (parentFile == null) {
 			if (other.parentFile != null)
 				return false;
-		} else if (!parentFile.equals(other.parentFile))
+		}
+		else if (!parentFile.equals(other.parentFile))
 			return false;
 		return true;
 	}
+
+	public String getContainerVersion() {
+		return containerVersion;
+	}
+
 }

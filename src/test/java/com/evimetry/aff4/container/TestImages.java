@@ -17,34 +17,129 @@
 
 package com.evimetry.aff4.container;
 
+import com.evimetry.aff4.AFF4Lexicon;
+import com.evimetry.aff4.Containers;
+import com.evimetry.aff4.IAFF4Container;
+import com.evimetry.aff4.IAFF4Image;
+import com.evimetry.aff4.IAFF4ImageStream;
+import com.evimetry.aff4.IAFF4Map;
+import org.apache.jena.rdf.model.Model;
+import org.apache.jena.rdf.model.Property;
+import org.apache.jena.rdf.model.ResIterator;
+import org.apache.jena.rdf.model.Resource;
+import org.junit.Test;
+
+import java.io.File;
+import java.io.IOException;
+import java.net.URL;
+import java.nio.ByteBuffer;
+import java.nio.channels.SeekableByteChannel;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.util.Collection;
+import java.util.Iterator;
+import java.util.Map;
+
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
-import java.io.File;
-import java.io.IOException;
-import java.net.URL;
-import java.nio.file.Paths;
-import java.util.Collection;
-import java.util.Iterator;
-import java.util.Map;
-
-import org.junit.Test;
-
-import com.evimetry.aff4.AFF4Lexicon;
-import com.evimetry.aff4.Containers;
-import com.evimetry.aff4.IAFF4Container;
-import com.evimetry.aff4.IAFF4Image;
-
 /**
  * Test enumeration of Images from containers.
  */
 public class TestImages {
 
+	private Iterator<IAFF4Image> getImageIterator(AFF4ZipContainer zipc) {
+		Iterator<IAFF4Image> imgIt = null;
+
+		if (zipc.getImages().hasNext()) {
+			imgIt = zipc.getImages();
+		}
+		return imgIt;
+	}
+
 	@Test
-	public void testContainerLinear() throws UnsupportedOperationException, IOException, Exception {
+	public void testContainerLogical()
+			  throws UnsupportedOperationException, IOException, Exception
+	{
+		File file = Paths.get("d:\\Data\\logical.images\\img1\\logical.image.aff4").toFile();
+
+		try (IAFF4Container container = Containers.open(file)) {
+
+			if (container instanceof AFF4ZipContainer) {
+				AFF4ZipContainer zipc = (AFF4ZipContainer) container;
+
+				Model model = zipc.getModel();
+				Property prop = model.createProperty(AFF4Lexicon.original_filename.getValue());
+
+				ResIterator resources = zipc.getModel().listResourcesWithProperty(prop);
+
+				while (resources.hasNext()) {
+					Resource res = resources.next();
+					IAFF4ImageStream stream = (IAFF4ImageStream) zipc.open(res.toString());
+
+					if (stream != null) {
+
+						String itemIdStr = res.getURI();
+
+						while (itemIdStr.startsWith("/")) {
+							itemIdStr = itemIdStr.substring(1);
+						}
+
+						if (itemIdStr.startsWith(zipc.getResourceID())) {
+							itemIdStr = itemIdStr.substring(zipc.getResourceID().length());
+						}
+
+						byte[] buffer = new byte[4096];
+						ByteBuffer bb = ByteBuffer.wrap(buffer);
+						int read = 1;
+						SeekableByteChannel bc = stream.getChannel();
+						while (read > 0) {
+								read = bc.read(bb);
+								bb.clear();
+
+						}
+					}
+				}
+			}
+		}
+	}
+
+
+	@Test
+	public void testContainerDiscontiguous()
+			  throws UnsupportedOperationException, IOException, Exception
+	{
+		URL url = TestContainer.class.getResource("/bbt-Macquisition-sample/APFS-compressed.aff4");
+		File file = Paths.get(url.toURI()).toFile();
+		try (IAFF4Container container = Containers.open(file)) {
+			Iterator<IAFF4Image> images = container.getImages();
+			assertTrue(images.hasNext());
+			IAFF4Image image = images.next();
+			assertFalse(images.hasNext());
+			Map<AFF4Lexicon, Collection<Object>> properties = image.getProperties();
+			IAFF4Map map = image.getMap();
+			try (SeekableByteChannel channel = map.getChannel()) {
+
+				int read = 0;
+				int sum = 0;
+				ByteBuffer dst = ByteBuffer.allocate(4096);
+				while((read = channel.read(dst)) > 0){
+					sum+=read;
+					dst.clear();
+				}
+				assertEquals(sum, 1031233536);
+			}
+
+		}
+	}
+
+	@Test
+	public void testContainerLinear()
+			  throws UnsupportedOperationException, IOException, Exception
+	{
 		URL url = TestContainer.class.getResource("/Base-Linear.aff4");
 		File file = Paths.get(url.toURI()).toFile();
 		try (IAFF4Container container = Containers.open(file)) {
@@ -66,7 +161,9 @@ public class TestImages {
 	}
 
 	@Test
-	public void testContainerAllocated() throws UnsupportedOperationException, IOException, Exception {
+	public void testContainerAllocated()
+			  throws UnsupportedOperationException, IOException, Exception
+	{
 		URL url = TestContainer.class.getResource("/Base-Allocated.aff4");
 		File file = Paths.get(url.toURI()).toFile();
 		try (IAFF4Container container = Containers.open(file)) {
@@ -88,7 +185,9 @@ public class TestImages {
 	}
 
 	@Test
-	public void testContainerLinearReadError() throws UnsupportedOperationException, IOException, Exception {
+	public void testContainerLinearReadError()
+			  throws UnsupportedOperationException, IOException, Exception
+	{
 		URL url = TestContainer.class.getResource("/Base-Linear-ReadError.aff4");
 		File file = Paths.get(url.toURI()).toFile();
 		try (IAFF4Container container = Containers.open(file)) {
@@ -110,7 +209,9 @@ public class TestImages {
 	}
 
 	@Test
-	public void testContainerLinearAllHashes() throws UnsupportedOperationException, IOException, Exception {
+	public void testContainerLinearAllHashes()
+			  throws UnsupportedOperationException, IOException, Exception
+	{
 		URL url = TestContainer.class.getResource("/Base-Linear-AllHashes.aff4");
 		File file = Paths.get(url.toURI()).toFile();
 		try (IAFF4Container container = Containers.open(file)) {
@@ -133,10 +234,10 @@ public class TestImages {
 
 	/**
 	 * Ensure the collection of properties, has the given item of the expected value.
-	 * 
+	 *
 	 * @param properties The collection of properties
-	 * @param property The property to test for.
-	 * @param expected The expected value for this property.
+	 * @param property   The property to test for.
+	 * @param expected   The expected value for this property.
 	 */
 	private void testProperty(Map<AFF4Lexicon, Collection<Object>> properties, AFF4Lexicon property, String expected) {
 		Collection<Object> elements = properties.get(property);
@@ -148,10 +249,10 @@ public class TestImages {
 
 	/**
 	 * Ensure the collection of properties, has the given item of the expected value.
-	 * 
+	 *
 	 * @param properties The collection of properties
-	 * @param property The property to test for.
-	 * @param expected The expected value for this property.
+	 * @param property   The property to test for.
+	 * @param expected   The expected value for this property.
 	 */
 	private void testProperty(Map<AFF4Lexicon, Collection<Object>> properties, AFF4Lexicon property, long expected) {
 		Collection<Object> elements = properties.get(property);
@@ -161,10 +262,12 @@ public class TestImages {
 		if (element instanceof Long) {
 			long e = (Long) element;
 			assertEquals(expected, e);
-		} else if (element instanceof Integer) {
+		}
+		else if (element instanceof Integer) {
 			int e = (Integer) element;
 			assertEquals(expected, e);
-		} else {
+		}
+		else {
 			fail("Incorrect data type.");
 		}
 	}

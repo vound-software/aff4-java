@@ -16,20 +16,18 @@
  */
 package com.evimetry.aff4.imagestream;
 
-import java.io.IOException;
-import java.nio.ByteBuffer;
-import java.nio.channels.ClosedChannelException;
-import java.nio.channels.FileChannel;
-import java.nio.channels.SeekableByteChannel;
-import java.util.Collections;
-import java.util.concurrent.atomic.AtomicBoolean;
-
-import org.apache.commons.compress.archivers.zip.ZipArchiveEntry;
-
 import com.evimetry.aff4.AFF4Lexicon;
 import com.evimetry.aff4.IAFF4ImageStream;
 import com.evimetry.aff4.container.AFF4ZipContainer;
 import com.evimetry.aff4.resource.AFF4Resource;
+import org.apache.commons.compress.archivers.zip.ZipArchiveEntry;
+
+import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.nio.channels.ClosedChannelException;
+import java.nio.channels.SeekableByteChannel;
+import java.util.Collections;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
  * A IAFF4ImageStream implementation that uses a raw Zip Segment as the backing store.
@@ -48,39 +46,37 @@ public class ZipSegmentImageStream extends AFF4Resource implements IAFF4ImageStr
 	/**
 	 * The parent channel to perform reads from.
 	 */
-	private final FileChannel channel;
+	private final SeekableByteChannel channel;
 
 	/**
 	 * The offset that this zip segment data starts at in the above channel.
 	 */
 	private final long offset;
-
+	/**
+	 * The size of this entry;
+	 */
+	private final long size;
+	/**
+	 * Closed flag.
+	 */
+	private final AtomicBoolean closed = new AtomicBoolean(false);
 	/**
 	 * The position of the channel.
 	 */
 	private long position;
 
 	/**
-	 * The size of this entry;
-	 */
-	private final long size;
-
-	/**
-	 * Closed flag.
-	 */
-	private final AtomicBoolean closed = new AtomicBoolean(false);
-
-	/**
 	 * Create a new ImageStream based on a raw Zip Segment. The zip entry MUST be uncompressed.
-	 * 
+	 *
 	 * @param resource The resource ID for this zip segment.
-	 * @param parent The parent zip container
-	 * @param channel The file channel to perform IO against.
-	 * @param entry The zip entry.
+	 * @param parent   The parent zip container
+	 * @param channel  The file channel to perform IO against.
+	 * @param entry    The zip entry.
 	 * @throws IOException If creation of the image stream fails.
 	 */
-	public ZipSegmentImageStream(String resource, AFF4ZipContainer parent, FileChannel channel, ZipArchiveEntry entry)
-			throws IOException {
+	public ZipSegmentImageStream(String resource, AFF4ZipContainer parent, SeekableByteChannel channel, ZipArchiveEntry entry)
+			  throws IOException
+	{
 		super(resource);
 		this.parent = parent;
 		this.channel = channel;
@@ -107,37 +103,64 @@ public class ZipSegmentImageStream extends AFF4Resource implements IAFF4ImageStr
 	}
 
 	@Override
-	public void close() throws IOException {
+	public void close() {
 		if (!closed.getAndSet(true)) {
 			parent.release(this);
 		}
 	}
 
 	@Override
-	public synchronized int read(ByteBuffer dst) throws IOException {
+	public synchronized int read(ByteBuffer dst)
+			  throws IOException
+	{
 		if (closed.get()) {
 			throw new ClosedChannelException();
 		}
 		if (dst == null || !dst.hasRemaining()) {
 			return 0;
 		}
-		int read = channel.read(dst, offset + position);
-		position += read;
+
+		int buffer_lim = dst.limit() - dst.position();
+		long file_lim = (long) size - position;
+
+		if (file_lim <= 0) {
+			return -1;
+		}
+
+		long limit = buffer_lim < file_lim ? buffer_lim : file_lim;
+
+		if (limit < dst.limit()) {
+			dst.limit((int) limit);
+		}
+
+		channel.position(offset + position);
+
+		int read = channel.read(dst);
+
+		if (read > 0) {
+			position += read;
+		}
 		return read;
 	}
 
 	@Override
-	public int write(ByteBuffer src) throws IOException {
+	public int write(ByteBuffer src)
+			  throws IOException
+	{
 		throw new IOException(IAFF4ImageStream.WRITE_ERROR_MESSAGE);
 	}
 
 	@Override
-	public synchronized long position() throws IOException {
+	public synchronized long position()
+			  throws IOException
+	{
 		return position;
 	}
 
 	@Override
-	public synchronized SeekableByteChannel position(long newPosition) throws IOException {
+	public synchronized SeekableByteChannel position(long newPosition)
+			  throws IOException
+	{
 		if (closed.get()) {
 			throw new ClosedChannelException();
 		}
@@ -152,12 +175,16 @@ public class ZipSegmentImageStream extends AFF4Resource implements IAFF4ImageStr
 	}
 
 	@Override
-	public SeekableByteChannel truncate(long size) throws IOException {
+	public SeekableByteChannel truncate(long size)
+			  throws IOException
+	{
 		throw new IOException(IAFF4ImageStream.WRITE_ERROR_MESSAGE);
 	}
 
 	@Override
-	public long size() throws IOException {
+	public long size()
+			  throws IOException
+	{
 		return size;
 	}
 
@@ -188,7 +215,8 @@ public class ZipSegmentImageStream extends AFF4Resource implements IAFF4ImageStr
 		if (entry == null) {
 			if (other.entry != null)
 				return false;
-		} else if (!entry.equals(other.entry))
+		}
+		else if (!entry.equals(other.entry))
 			return false;
 		if (offset != other.offset)
 			return false;

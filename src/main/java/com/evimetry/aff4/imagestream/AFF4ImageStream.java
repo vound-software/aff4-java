@@ -48,60 +48,60 @@ public class AFF4ImageStream extends AFF4Resource implements IAFF4ImageStream, S
 	/**
 	 * The maximum number of bevvy index to keep in memory
 	 */
-	private final static int BEVVY_CACHE_SIZE = 10;
+	protected final static int BEVVY_CACHE_SIZE = 10;
 	/**
 	 * The amount of chunk data (in bytes) to keep in memory.
 	 */
-	private final static long CHUNK_CACHE_SIZE = 8l * 1024l * 1024l;
+	protected final static long CHUNK_CACHE_SIZE = 8l * 1024l * 1024l;
 	/**
 	 * The parent Zip container for this entry
 	 */
-	private final AFF4ZipContainer parent;
+	protected AFF4ZipContainer parent;
 
 	/**
 	 * The position of the channel.
 	 */
-	private long position;
+	protected long position;
 
 	/**
 	 * The size of this entry;
 	 */
-	private final long size;
+	protected long size;
 	/**
 	 * The size of each chunk in the bevvy
 	 */
-	private final int chunkSize;
+	protected int chunkSize;
 
 	/**
 	 * The number of chunks per segment.
 	 */
-	private final int chunksInSegment;
+	protected int chunksInSegment;
 	/**
 	 * The decompressor to use for compressed chunks.
 	 */
-	private final CompressionCodec codec;
+	protected CompressionCodec codec;
 
 	/**
 	 * Closed flag.
 	 */
-	private final AtomicBoolean closed = new AtomicBoolean(false);
+	protected final AtomicBoolean closed = new AtomicBoolean(false);
 
 	/**
 	 * Cache of recently read bevvy index
 	 */
-	private final Cache<Integer, BevvyIndex> bevvyCache;
+	protected Cache<Integer, BevvyIndex> bevvyCache;
 	/**
 	 * Loader for the bevvy index cache
 	 */
-	private final BevvyIndexLoaderFunction bevvyLoader;
+	protected BevvyIndexLoaderFunction bevvyLoader;
 	/**
 	 * Cache of recently read bevvy index
 	 */
-	private final Cache<Long, ByteBuffer> chunkCache;
+	protected Cache<Long, ByteBuffer> chunkCache;
 	/**
 	 * Loader for the chunk cache
 	 */
-	private final ChunkLoaderFunction chunkLoader;
+	protected ChunkLoaderFunction chunkLoader;
 
 	/**
 	 * Create a new AFF4 Image Stream
@@ -112,7 +112,7 @@ public class AFF4ImageStream extends AFF4Resource implements IAFF4ImageStream, S
 	 * @param zipContainer The zip container.
 	 * @param model The RDF model to query about this image stream.
 	 */
-	public AFF4ImageStream(String resource, AFF4ZipContainer parent, ZipFile zipContainer, FileChannel channel,
+	public AFF4ImageStream(String resource, AFF4ZipContainer parent, ZipFile zipContainer, SeekableByteChannel channel,
 			Model model) {
 		super(resource);
 		this.parent = parent;
@@ -124,8 +124,13 @@ public class AFF4ImageStream extends AFF4Resource implements IAFF4ImageStream, S
 		this.bevvyCache = Caffeine.newBuilder().maximumSize(BEVVY_CACHE_SIZE).build();
 		this.chunkCache = Caffeine.newBuilder().maximumSize((int) (CHUNK_CACHE_SIZE / (long) chunkSize)).build();
 		this.bevvyLoader = new BevvyIndexLoaderFunction(resource, parent, zipContainer);
-		this.chunkLoader = new ChunkLoaderFunction(parent, channel, bevvyCache, bevvyLoader, chunkSize, chunksInSegment, codec);
+		this.chunkLoader = new ChunkLoaderFunction(parent, channel, bevvyCache, bevvyLoader, chunkSize, chunksInSegment, size, codec, null);
+
 		initProperties();
+	}
+
+	protected AFF4ImageStream(String resource) {
+		super(resource);
 	}
 
 	/**
@@ -137,7 +142,6 @@ public class AFF4ImageStream extends AFF4Resource implements IAFF4ImageStream, S
 		properties.put(AFF4Lexicon.chunkSize, Collections.singletonList(chunkSize));
 		properties.put(AFF4Lexicon.chunksInSegment, Collections.singletonList(chunksInSegment));
 		properties.put(AFF4Lexicon.compressionMethod, Collections.singletonList(AFF4Lexicon.forValue(codec.getResourceID())));
-		// TODO: Add in digest values for this image stream as stored in the model.
 	}
 
 	@Override

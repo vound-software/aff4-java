@@ -69,6 +69,12 @@ public class LightResolver extends AFF4Resource implements IAFF4Resolver {
 		scanForAFF4Volumes(path.toPath());
 	}
 
+	public LightResolver(String resource) {
+		super(resource);
+		this.path = null;
+	}
+
+
 	@Override
 	public IAFF4Resource open(String urn) {
 		if (hasResource(urn)) {

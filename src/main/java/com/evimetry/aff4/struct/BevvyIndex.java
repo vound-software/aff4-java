@@ -16,24 +16,25 @@
  */
 package com.evimetry.aff4.struct;
 
-import java.io.IOException;
-import java.nio.ByteBuffer;
-import java.nio.ByteOrder;
-import java.nio.channels.SeekableByteChannel;
-
-import org.apache.commons.compress.archivers.zip.ZipArchiveEntry;
-import org.apache.commons.compress.archivers.zip.ZipFile;
-
 import com.evimetry.aff4.IAFF4ImageStream;
 import com.evimetry.aff4.container.AFF4ZipContainer;
 import com.evimetry.aff4.imagestream.Streams;
 import com.evimetry.aff4.rdf.NameCodec;
+import org.apache.commons.compress.archivers.zip.ZipArchiveEntry;
+import org.apache.commons.compress.archivers.zip.ZipFile;
+
+import java.io.IOException;
+import java.io.InputStream;
+import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
+import java.nio.channels.SeekableByteChannel;
 
 /**
  * An ImageStream/Bevvy index reader.
  */
 public class BevvyIndex {
 
+	private final ZipFile zipcontainer;
 	/**
 	 * The bevvy index ID which we represent
 	 */
@@ -42,7 +43,7 @@ public class BevvyIndex {
 	/**
 	 * The offset of the first chunk in the parent's channel
 	 */
-	private final long offset;
+	private final ZipArchiveEntry archiveEntry;
 
 	/**
 	 * The collection of image stream points.
@@ -50,27 +51,58 @@ public class BevvyIndex {
 	private ImageStreamPoint[] entries;
 
 	/**
-	 * Create a new Bevvy Index reader
-	 * 
-	 * @param resource The resource of the image stream we are servicing.
-	 * @param bevvyID The bevvy id
-	 * @param parent The parent zip container
+	 * Create a new Bevvy Index reader BxB ther are some inconsistencies in naming for different versions someties anaming differs so we will try to
+	 * acquire zip segment by using different sanitization
+	 *
+	 * @param resource     The resource of the image stream we are servicing.
+	 * @param bevvyID      The bevvy id
+	 * @param parent       The parent zip container
 	 * @param zipContainer The zip container.
 	 * @throws IOException If reading the zip container fails.
 	 */
-	public BevvyIndex(String resource, int bevvyID, AFF4ZipContainer parent, ZipFile zipContainer) throws IOException {
+	
+	// TODO -- this is not right -- recheck 
+	public BevvyIndex(String resource, int bevvyID, AFF4ZipContainer parent, ZipFile zipContainer)
+			  throws IOException
+	{
+		String sanitized = resource;
+		this.zipcontainer = zipContainer;
+
 		this.bevvyID = bevvyID;
 
 		// Get the offset of the bevvy segment into the primary channel.
-		String bevvyChunkName = NameCodec.encode(String.format("%s/%08d", resource, bevvyID));
+		String bevvyChunkName = NameCodec.encode(String.format("%s/%08d", sanitized, bevvyID));
 		ZipArchiveEntry entry = zipContainer.getEntry(bevvyChunkName);
-		if (entry == null)
-			throw new IOException("Missing bevvy segment");
-		this.offset = entry.getDataOffset();
+
+		if (entry == null) {
+			//if("1.1".equals(parent.getContainerVersion())) {
+			//BxB -- for logical images
+			sanitized = parent.sanitizeResource(resource);
+			bevvyChunkName = NameCodec.encode(String.format("%s/%08d", sanitized, bevvyID));
+			entry = zipContainer.getEntry(bevvyChunkName);
+		}
+		//else if("1.2".equals(parent.getContainerVersion())){
+		if (entry == null) {
+			bevvyChunkName = String.format("%s/%08d", resource, bevvyID);
+			entry = zipContainer.getEntry(bevvyChunkName);
+		}
+		//}
+		if (entry == null) {
+			throw new IOException("Missing bevvy segment ["+bevvyChunkName+"]");
+		}
+
+		this.archiveEntry = entry;
 
 		// Load the indices
-		String bevvyIndexName = NameCodec.encode(String.format("%s/%08d.index", resource, bevvyID));
+		String bevvyIndexName = NameCodec.encode(String.format("%s/%08d.index", sanitized, bevvyID));
 		IAFF4ImageStream stream = parent.getSegment(bevvyIndexName);
+
+		if (stream == null && "1.2".equals(parent.getContainerVersion())) {
+			bevvyIndexName = String.format("%s/%08d.index", resource, bevvyID);
+			stream = parent.getSegmentNoSanitize(bevvyIndexName);
+		}
+
+
 		try (SeekableByteChannel channel = stream.getChannel()) {
 			ByteBuffer buffer = ByteBuffer.allocateDirect((int) channel.size()).order(ByteOrder.LITTLE_ENDIAN);
 			Streams.readFull(channel, 0, buffer);
@@ -86,7 +118,7 @@ public class BevvyIndex {
 
 	/**
 	 * Get the bevvy id.
-	 * 
+	 *
 	 * @return The Bevvy ID
 	 */
 	public int getBevvyID() {
@@ -95,14 +127,16 @@ public class BevvyIndex {
 
 	/**
 	 * The offset of the first chunk in the parent's channel
+	 *
+	 * @return
 	 */
-	public long getOffset() {
-		return offset;
+	public ZipArchiveEntry getEntry() {
+		return archiveEntry;
 	}
 
 	/**
 	 * Get the image point for this region
-	 * 
+	 *
 	 * @param offset The chunk offset.
 	 * @return The image point, or null if none exist.
 	 */
@@ -112,4 +146,6 @@ public class BevvyIndex {
 		}
 		return entries[offset];
 	}
+
+
 }

@@ -24,14 +24,15 @@ import java.nio.channels.SeekableByteChannel;
  * Helper utility functions for reading from streams,
  */
 public class Streams {
-	
+
 	/**
-	 * Read the given channel into the given buffer.
-	 * 
-	 * @param channel The channel to read from
-	 * @param position The position to read
-	 * @param buffer The buffer to read into.
-	 * @throws IOException If reading the buffer failed.
+	 *  Read the given channel into the given buffer.
+	 *
+	 * @param channel
+	 * @param position
+	 * @param buffer
+	 * @return
+	 * @throws IOException
 	 */
 	public static int readFull(SeekableByteChannel channel, long position, ByteBuffer buffer) throws IOException {
 		int read = 0;

@@ -16,6 +16,8 @@
  */
 package com.evimetry.aff4.resource;
 
+import java.time.Instant;
+import java.time.ZonedDateTime;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -26,6 +28,7 @@ import java.util.Optional;
 
 import org.apache.jena.rdf.model.Model;
 import org.apache.jena.rdf.model.Property;
+import org.apache.jena.rdf.model.RDFNode;
 import org.apache.jena.rdf.model.Resource;
 import org.apache.jena.rdf.model.Statement;
 import org.apache.jena.rdf.model.StmtIterator;
@@ -150,6 +153,46 @@ public abstract class AFF4Resource implements IAFF4Resource {
 	}
 
 	/**
+	 * Add the given integer property to this objects property list if present.
+	 *
+	 * @param model The RDF model to use.
+	 * @param resource The resource to enquire
+	 * @param property The property to add.
+	 */
+	protected void addDateTimeProperty(Model model, String resource, AFF4Lexicon property) {
+		Optional<Instant> value = RDFUtil.readDateTimeProperty(model, resource, property);
+		if (value.isPresent()) {
+			properties.put(property, Collections.singletonList(value.get()));
+		}
+	}
+
+
+
+	protected void addStringProperties(Model model, String resource, AFF4Lexicon property){
+
+		Resource r = model.createResource(resource);
+		Property p = model.createProperty(property.toString());
+
+		if (r.hasProperty(p)) {
+			StmtIterator iter = model.listStatements( r, p, (RDFNode) null );
+
+			try {
+				StringBuilder sb = new StringBuilder();
+
+				while(iter.hasNext()) {
+					Statement stmt = iter.nextStatement();
+					sb.append(stmt.getString()).append("^^").append(stmt.getLiteral().getDatatype()).append(", ");
+				}
+				properties.put(property,Collections.singletonList(sb.toString()));
+			}
+			finally {
+				iter.close();
+			}
+		}
+	}
+
+
+	/**
 	 * Add the given string property to this objects property list if present.
 	 * 
 	 * @param model The RDF model to use.
@@ -176,6 +219,7 @@ public abstract class AFF4Resource implements IAFF4Resource {
 			properties.put(property, Collections.singletonList(value.get()));
 		}
 	}
+
 
 	/**
 	 * Add the given resource property to this objects property list if present.

@@ -42,7 +42,7 @@ public class SnappyCompression implements CompressionCodec {
 	 */
 	public SnappyCompression(int chunkSize) {
 		if (chunkSize <= 0) {
-			throw new IllegalArgumentException("Chunksize must be larger than 0");
+			throw new IllegalArgumentException("Chunk size must be larger than 0");
 		}
 		this.chunkSize = chunkSize;
 	}
