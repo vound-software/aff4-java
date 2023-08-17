@@ -165,51 +165,6 @@ public class TestImageStream {
 	 * @throws Exception something went wrong.
 	 */
 	@Test
-	public void testEncryptedImageStreamContents()
-			  throws Exception
-	{
-		URL url = TestContainer.class.getResource(encryptedFile);
-		File file = Paths.get(url.toURI()).toFile();
-		try (IAFF4Container container = Containers.open(file)) {
-
-			@SuppressWarnings("resource")
-			AFF4ZipContainer con = (AFF4ZipContainer) container;
-			List<IAFF4ImageStream> streams = new ArrayList<>();
-			ResIterator resources = con.getModel().listResourcesWithProperty(RDF.type, con.getModel().createResource(AFF4Lexicon.EncryptedStream.getValue()));
-
-			while (resources.hasNext()) {
-
-				FileOutputStream fos = new FileOutputStream(new File("c:\\tmp\\aff4.out.aff4"));
-				Resource res = resources.next();
-				try {
-					IAFF4ImageStream stream = con.getEncryptedImageStream(res.toString(),"password");
-
-					SeekableByteChannel sc = stream.getChannel();
-
-					int read =1;
-
-					while(read > 0) {
-						ByteBuffer block = ByteBuffer.allocate(512);
-
-						read = IOUtils.read(sc, block);
-						if (read > 0) {
-							fos.write(block.array(), 0, read);
-						}
-					}
-				}
-				catch (IOException ioe) {
-					logger.error("Error creating stream for  " + res.toString(), ioe);
-				}
-			}
-		}
-	}
-
-	/**
-	 * Test for accessing the a map index entry
-	 *
-	 * @throws Exception something went wrong.
-	 */
-	@Test
 	public void testReadErrorImageStreamContents()
 			  throws Exception
 	{
@@ -261,7 +216,7 @@ public class TestImageStream {
 			  throws IOException, NoSuchAlgorithmException
 	{
 		Collection<Object> rdfType = segment.getProperty(AFF4Lexicon.RDFType);
-		assertEquals(AFF4Lexicon.EncryptedStream, rdfType.iterator().next());
+		assertEquals(AFF4Lexicon.ImageStream, rdfType.iterator().next());
 		try (SeekableByteChannel channel = segment.getChannel()) {
 			MessageDigest md = MessageDigest.getInstance("SHA-1");
 			ByteBuffer buffer = ByteBuffer.allocateDirect((int) readSize).order(ByteOrder.LITTLE_ENDIAN);

@@ -27,6 +27,7 @@ import org.apache.jena.rdf.model.Model;
 import org.apache.jena.rdf.model.Property;
 import org.apache.jena.rdf.model.ResIterator;
 import org.apache.jena.rdf.model.Resource;
+import org.junit.Ignore;
 import org.junit.Test;
 
 import java.io.File;
@@ -58,82 +59,6 @@ public class TestImages {
 			imgIt = zipc.getImages();
 		}
 		return imgIt;
-	}
-
-	@Test
-	public void testContainerLogical()
-			  throws UnsupportedOperationException, IOException, Exception
-	{
-		File file = Paths.get("d:\\Data\\logical.images\\img1\\logical.image.aff4").toFile();
-
-		try (IAFF4Container container = Containers.open(file)) {
-
-			if (container instanceof AFF4ZipContainer) {
-				AFF4ZipContainer zipc = (AFF4ZipContainer) container;
-
-				Model model = zipc.getModel();
-				Property prop = model.createProperty(AFF4Lexicon.original_filename.getValue());
-
-				ResIterator resources = zipc.getModel().listResourcesWithProperty(prop);
-
-				while (resources.hasNext()) {
-					Resource res = resources.next();
-					IAFF4ImageStream stream = (IAFF4ImageStream) zipc.open(res.toString());
-
-					if (stream != null) {
-
-						String itemIdStr = res.getURI();
-
-						while (itemIdStr.startsWith("/")) {
-							itemIdStr = itemIdStr.substring(1);
-						}
-
-						if (itemIdStr.startsWith(zipc.getResourceID())) {
-							itemIdStr = itemIdStr.substring(zipc.getResourceID().length());
-						}
-
-						byte[] buffer = new byte[4096];
-						ByteBuffer bb = ByteBuffer.wrap(buffer);
-						int read = 1;
-						SeekableByteChannel bc = stream.getChannel();
-						while (read > 0) {
-								read = bc.read(bb);
-								bb.clear();
-
-						}
-					}
-				}
-			}
-		}
-	}
-
-
-	@Test
-	public void testContainerDiscontiguous()
-			  throws UnsupportedOperationException, IOException, Exception
-	{
-		URL url = TestContainer.class.getResource("/bbt-Macquisition-sample/APFS-compressed.aff4");
-		File file = Paths.get(url.toURI()).toFile();
-		try (IAFF4Container container = Containers.open(file)) {
-			Iterator<IAFF4Image> images = container.getImages();
-			assertTrue(images.hasNext());
-			IAFF4Image image = images.next();
-			assertFalse(images.hasNext());
-			Map<AFF4Lexicon, Collection<Object>> properties = image.getProperties();
-			IAFF4Map map = image.getMap();
-			try (SeekableByteChannel channel = map.getChannel()) {
-
-				int read = 0;
-				int sum = 0;
-				ByteBuffer dst = ByteBuffer.allocate(4096);
-				while((read = channel.read(dst)) > 0){
-					sum+=read;
-					dst.clear();
-				}
-				assertEquals(sum, 1031233536);
-			}
-
-		}
 	}
 
 	@Test

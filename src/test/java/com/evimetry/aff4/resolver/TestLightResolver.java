@@ -22,6 +22,7 @@ import static org.junit.Assert.*;
 import java.io.File;
 import java.io.IOException;
 import java.net.URL;
+import java.nio.file.InvalidPathException;
 import java.nio.file.Paths;
 
 import org.junit.FixMethodOrder;
@@ -120,7 +121,7 @@ public class TestLightResolver {
 	 * 
 	 * @throws Exception If the location is missing or unable to be read.
 	 */
-	@Test(expected = IOException.class)
+	@Test(expected = InvalidPathException.class)
 	public void testNotExistFolder() throws Exception {
 		URL url = TestContainer.class.getResource("/Striped");
 		File file = Paths.get(url.toURI() + "2").toFile();

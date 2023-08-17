@@ -52,7 +52,7 @@ public class TestZipImageStream {
 	private final String streamSHA1 = "ba85b601a65aef8adf7b0e0fb3144b217d4cd27c";
 	private final String streamIndexSHA1 = "8bb7f7820cffbb3b14007e36d2b0ad2459c4d9fa";
 	
-	private final String filename2 = "/blank.aff4";
+	private final String filename2 = "/Base-Linear.aff4";
 
 	/**
 	 * Test reading a basic file entry.
@@ -173,14 +173,14 @@ public class TestZipImageStream {
 		File file = Paths.get(url.toURI()).toFile();
 		try (IAFF4Container container = Containers.open(file)) {
 			// Confirm we have the correct container.
-			assertEquals("aff4://b437c880-9f5a-420e-8553-8878f5518441", container.getResourceID());
+			assertEquals("aff4://685e15cc-d0fb-4dbc-ba47-48117fc77044", container.getResourceID());
 			assertTrue(container instanceof AFF4ZipContainer);
 
 			@SuppressWarnings("resource")
 			AFF4ZipContainer con = (AFF4ZipContainer) container;
 
 			// Test the contents of the map stream via a sha1 hash.
-			testStreamContents(con.getSegment("information.turtle"), "1e69f88af3547bb339b8d2f4538cdfbb9627f2da");
+			testStreamContents(con.getSegment("information.turtle"), "38cb789efd5e046c4a8bdbbaeb5c9227dcfc64b2");
 		}
 	}
 

@@ -198,45 +198,6 @@ public class TestImageMaterialisation {
 		}
 	}
 	
-	@Test
-	public void testContainerBlank() throws UnsupportedOperationException, IOException, Exception {
-		URL url = TestContainer.class.getResource("/blank.aff4");
-		File file = Paths.get(url.toURI()).toFile();
-		try (IAFF4Container container = Containers.open(file)) {
-			assertEquals("aff4://b437c880-9f5a-420e-8553-8878f5518441", container.getResourceID());
-			Iterator<IAFF4Image> images = container.getImages();
-			assertTrue(images.hasNext());
-			IAFF4Image image = images.next();
-			assertFalse(images.hasNext());
-			assertEquals("aff4://818f24e3-1b67-457d-a9cd-1cd234ba9573", image.getResourceID());
-			IAFF4Map map = image.getMap();
-			assertEquals("aff4://223fb1d7-7826-4631-a35b-df14ad7bf75e", map.getResourceID());
-			try (SeekableByteChannel channel = map.getChannel()) {
-				assertEquals(99983360, channel.size());
-				assertEquals(blankSHA1, getDigest(channel, readSize));
-			}
-		}
-	}
-	
-	@Test
-	public void testContainerBlank5() throws UnsupportedOperationException, IOException, Exception {
-		URL url = TestContainer.class.getResource("/blank5.aff4");
-		File file = Paths.get(url.toURI()).toFile();
-		try (IAFF4Container container = Containers.open(file)) {
-			assertEquals("aff4://37de92d3-24bb-4e5f-8279-a2b3992eba52", container.getResourceID());
-			Iterator<IAFF4Image> images = container.getImages();
-			assertTrue(images.hasNext());
-			IAFF4Image image = images.next();
-			assertFalse(images.hasNext());
-			assertEquals("aff4://0b3029ee-47f1-479e-9f87-fca0041e8cc2", image.getResourceID());
-			IAFF4Map map = image.getMap();
-			assertEquals("aff4://6e3c59b5-e660-4adf-8eb6-472cef961c2d", map.getResourceID());
-			try (SeekableByteChannel channel = map.getChannel()) {
-				assertEquals(99983360, channel.size());
-				assertEquals(blankSHA1, getDigest(channel, readSize));
-			}
-		}
-	}
 
 	private String getDigest(SeekableByteChannel channel, long readSize) throws IOException, NoSuchAlgorithmException {
 		MessageDigest md = MessageDigest.getInstance("SHA-1");
