@@ -75,9 +75,9 @@ public class LZ4Compression implements CompressionCodec {
 			source.get(srcArray);
 		}
 		try {
-			decompressor.decompress(srcArray, 0, srcArray.length, destination, 0, chunkSize);
+			int len = decompressor.decompress(srcArray, 0, srcArray.length, destination, 0, chunkSize);
 			source.position(p);
-			return ByteBuffer.wrap(destination).order(ByteOrder.LITTLE_ENDIAN);
+			return ByteBuffer.wrap(destination, 0, len ).order(ByteOrder.LITTLE_ENDIAN);
 		} catch (Throwable e) {
 			if (!(e instanceof IOException)) {
 				throw new IOException(e);

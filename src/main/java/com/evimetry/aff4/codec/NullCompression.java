@@ -47,11 +47,10 @@ public class NullCompression implements CompressionCodec {
 
 	@Override
 	public ByteBuffer decompress(ByteBuffer source) throws IOException {
-		int p = source.position();
-		ByteBuffer destination = ByteBuffer.allocate(chunkSize).order(ByteOrder.LITTLE_ENDIAN);
-		destination.put(source);
+		int l = source.limit();
+		ByteBuffer destination = ByteBuffer.allocate(l).order(ByteOrder.LITTLE_ENDIAN);
+		destination.put(source.slice(0,l));
 		destination.position(0);
-		source.position(p);
 		return destination;
 	}
 

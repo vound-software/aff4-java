@@ -65,9 +65,9 @@ public class DeflateCompression implements CompressionCodec {
 		}
 		decompressor.setInput(srcArray);
 		try {
-			decompressor.inflate(destination);
+			long len = decompressor.inflate(destination);
 			source.position(p);
-			return ByteBuffer.wrap(destination).order(ByteOrder.LITTLE_ENDIAN);
+			return ByteBuffer.wrap(destination,  0, (int)len).order(ByteOrder.LITTLE_ENDIAN);
 		} catch (DataFormatException e) {
 			throw new IOException(e);
 		}
