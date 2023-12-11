@@ -54,7 +54,8 @@ public class SnappyCompression implements CompressionCodec {
 			newSrc.put(source);
 			source = newSrc;
 		}
-		ByteBuffer destination = ByteBuffer.allocateDirect(chunkSize).order(ByteOrder.LITTLE_ENDIAN);
+		int dLen = Snappy.uncompressedLength(source);
+		ByteBuffer destination = ByteBuffer.allocateDirect(dLen).order(ByteOrder.LITTLE_ENDIAN);
 		Snappy.uncompress(source, destination);
 		destination.position(0);
 		return destination;
