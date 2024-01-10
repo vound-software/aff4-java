@@ -33,12 +33,12 @@ public enum AFF4Lexicon {
 	 * Base RDF type.
 	 */
 	RDFType("rdf:type"),
-	
+
 	/**
 	 * Base type for AFF4 Zip64-based containers.
 	 */
 	ZipVolume(AFF4.AFF4_BASE_URI + "ZipVolume"),
-	
+
 	/**
 	 * The creation time of the volume.
 	 */
@@ -53,10 +53,15 @@ public enum AFF4Lexicon {
 	 */
 	ImageStream(AFF4.AFF4_BASE_URI + "ImageStream"),
 
+	DependentStream(AFF4.AFF4_BASE_URI + "dependentStream"),
 	/**
 	 * Object type is Image.
 	 */
 	Image(AFF4.AFF4_BASE_URI + "Image"),
+
+
+	FileImage(AFF4.AFF4_BASE_URI + "FileImage"),
+
 	/**
 	 * The Object is a Contiguous Image. Typically an Image of a disk, volume, tape, etc.
 	 */
@@ -77,11 +82,6 @@ public enum AFF4Lexicon {
 	 * The Object is an Image of physical memory.
 	 */
 	MemoryImage(AFF4.AFF4_BASE_URI + "MemoryImage"),
-
-	/**
-	 * The object is an Image of the file.
-	 */
-	FileImage(AFF4.AFF4_BASE_URI + "FileImage"),
 
 	/**
 	 * Defined ImageStream that contains Zeros.
@@ -142,6 +142,7 @@ public enum AFF4Lexicon {
 	 */
 	majorVersion(AFF4.AFF4_BASE_URI + "majorVersion"),
 
+	version(AFF4.AFF4_BASE_URI + "version"),
 	/**
 	 * The size of the object (aff4:Map and aff4:ImageStream).
 	 */
@@ -170,8 +171,8 @@ public enum AFF4Lexicon {
 	/**
 	 * The filename for any segment URI.
 	 */
-		original_filename(AFF4.AFF4_BASE_URI + "original_filename"),
-
+	original_filename(AFF4.AFF4_BASE_URI + "original_filename"),
+	file(AFF4.AFF4_BASE_URI + "File"),
 	/**
 	 * The Map or ImageStream which corresponds to the bytestream of the Image
 	 */
@@ -193,6 +194,11 @@ public enum AFF4Lexicon {
 	 * The hash of the stream
 	 */
 	hash(AFF4.AFF4_BASE_URI + "hash"),
+
+	imageStreamHash(AFF4.AFF4_BASE_URI + "imageStreamHash"),
+
+	imageStreamIndexHashBBT( com.evimetry.aff4.AFF4.AFF4_BASE_URI  + "imageStreamIndexHash"),
+	imageStreamIndexHash(AFF4.AFF4_BASE_URI + "imageStreamIndexHash"),
 
 	/**
 	 * The SHA1 data type
@@ -242,57 +248,59 @@ public enum AFF4Lexicon {
 	/**
 	 * Acquisition type.
 	 */
-	acquisitionType(AFF4.AFF4_BASE_URI + "acquisitionType"), 
-	
+	acquisitionType(AFF4.AFF4_BASE_URI + "acquisitionType"),
+
 	/**
 	 * Optional field to define the page size for physical memory acquisitions
 	 */
-	pageSize(AFF4.AFF4_BASE_URI + "pageSize"), 
+	pageSize(AFF4.AFF4_BASE_URI + "pageSize"),
 	/**
 	 * Optional field to define the page table offset for physical memory acquisitions
 	 */
-	memoryPageTableEntryOffset(AFF4.AFF4_BASE_URI + "memoryPageTableEntryOffset"), 
+	memoryPageTableEntryOffset(AFF4.AFF4_BASE_URI + "memoryPageTableEntryOffset"),
 	/**
 	 * Optional field to define the installed memory size for physical memory acquisitions
 	 */
-	memoryInstalledSize(AFF4.AFF4_BASE_URI + "memoryInstalledSize"), 
+	memoryInstalledSize(AFF4.AFF4_BASE_URI + "memoryInstalledSize"),
 	/**
 	 * Optional field to define the addressable memory size for physical memory acquisitions
 	 */
-	memoryAddressableSize(AFF4.AFF4_BASE_URI + "memoryAddressableSize"), 
+	memoryAddressableSize(AFF4.AFF4_BASE_URI + "memoryAddressableSize"),
 	/**
 	 * Optional field to define the block/sector size for disk related acquisitions
 	 */
-	blockSize(AFF4.AFF4_BASE_URI + "blockSize"), 
+	blockSize(AFF4.AFF4_BASE_URI + "blockSize"),
+
+	blockHashes(AFF4.AFF4_BASE_URI + "BlockHashes"),
 	/**
 	 * Optional field to define the device name (as per Operating System) for disk related acquisitions
 	 */
-	diskDeviceName(AFF4.AFF4_BASE_URI + "diskDeviceName"), 
+	diskDeviceName(AFF4.AFF4_BASE_URI + "diskDeviceName"),
 	/**
 	 * Optional field to define the device firmware for disk related acquisitions
 	 */
-	diskFirmware(AFF4.AFF4_BASE_URI + "diskFirmware"), 
+	diskFirmware(AFF4.AFF4_BASE_URI + "diskFirmware"),
 	/**
 	 * Optional field to define the device interface type for disk related acquisitions
 	 */
-	diskInterfaceType(AFF4.AFF4_BASE_URI + "diskInterfaceType"), 
+	diskInterfaceType(AFF4.AFF4_BASE_URI + "diskInterfaceType"),
 	/**
 	 * Optional field to define the device make for disk related acquisitions
 	 */
-	diskMake(AFF4.AFF4_BASE_URI + "diskMake"), 
+	diskMake(AFF4.AFF4_BASE_URI + "diskMake"),
 	/**
 	 * Optional field to define the device model for disk related acquisitions
 	 */
-	diskModel(AFF4.AFF4_BASE_URI + "diskModel"), 
+	diskModel(AFF4.AFF4_BASE_URI + "diskModel"),
 	/**
 	 * Optional field to define the device serial number for disk related acquisitions
 	 */
-	diskSerial(AFF4.AFF4_BASE_URI + "diskSerial"), 
+	diskSerial(AFF4.AFF4_BASE_URI + "diskSerial"),
 	/**
 	 * Optional field to define the sector count for disk related acquisitions
 	 */
 	sectorCount(AFF4.AFF4_BASE_URI + "sectorCount"),
-	
+
 	/**
 	 * Optional RDF type to define case details.
 	 */
@@ -305,49 +313,68 @@ public enum AFF4Lexicon {
 	 * Optional RDF type to define case name.
 	 */
 	caseName(AFF4.AFF4_BASE_URI + "caseName"),
+
+	caseNumber(AFF4.AFF4_BASE_URI + "caseNumber"),
+
+	evidenceNumber(AFF4.AFF4_BASE_URI + "evidenceNumber"),
+
+	notes(AFF4.AFF4_BASE_URI + "notes"),
+
+	timestamp(AFF4.AFF4_BASE_URI + "timestamp"),
+
+
+	lastAccessed(AFF4.AFF4_BASE_URI + "lastAccessed"),
+	lastWritten(AFF4.AFF4_BASE_URI + "lastWritten"),
+
+	birthTime(AFF4.AFF4_BASE_URI + "birthTime"),
+
+	OriginalFileName(AFF4.AFF4_BASE_URI + "originalFileName"),
+
+	Folder(com.evimetry.aff4.AFF4.AFF4_BASE_URI+"Folder"),
+
+	/**
+	 *  	Class representing a suspect folder for logical images
+	 */
+	FolderImage(com.evimetry.aff4.AFF4.AFF4_BASE_URI+"FolderImage"),
+
 	/**
 	 * Optional RDF type to define case examiner who performed the acquisition.
 	 */
 	examiner(AFF4.AFF4_BASE_URI + "examiner"),
-	
-	
+
+
 	/* Black Bag Technologies Custom Properties */
 	/**
 	 * APFS Container type
 	 */
-	APFSContainerImage(BBT.BASE_URI + "APFSContainerImage"),
+	APFSContainerImage(AFF4.BBT_BASE_URI + "APFSContainerImage"),
 	/**
 	 * APFS Container type
 	 */
-	APFSContainerType(BBT.BASE_URI + "APFSContainerType"),
+	APFSContainerType(AFF4.BBT_BASE_URI + "APFSContainerType"),
 	/**
 	 * APFS Container type (T2)
 	 */
-	APFST2ContainerType(BBT.BASE_URI + "APFST2ContainerType"),
+	APFST2ContainerType(AFF4.BBT_BASE_URI + "APFST2ContainerType"),
 	/**
 	 * APFS Container type (Fusion)
 	 */
-	APFSFusionContainerType(BBT.BASE_URI + "APFSFusionContainerType"),
+	APFSFusionContainerType(AFF4.BBT_BASE_URI + "APFSFusionContainerType"),
 	/**
 	 * APFS Container type (Standard disk)
 	 */
-	APFSStandardContainerType(BBT.BASE_URI + "APFSStandardContainerType"),
+	APFSStandardContainerType(AFF4.BBT_BASE_URI + "APFSStandardContainerType"),
 	/**
 	 * Volume/Disk contains extents.
 	 */
-	ContainsExtents(BBT.BASE_URI + "ContainsExtents"),
+	ContainsExtents(AFF4.BBT_BASE_URI + "ContainsExtents"),
 	/**
 	 * Volume/Disk contains unallocated regions (sparse).
 	 */
 	ContainsUnallocated(BBT.BASE_URI + "ContainsUnallocated"),
 
 
-	/**
-	 * The original unencoded file path and name of a logical evidence object
-	 */
-	OriginalFileName(AFF4.AFF4_BASE_URI+"originalFileName"),
-
-	/**
+		/**
 	 * The birth time of a file's content and metadata.
 	 */
 
@@ -368,16 +395,6 @@ public enum AFF4Lexicon {
 	 * 	The last access time of a file's content.
 	 */
 	LastAccessed( AFF4.AFF4_BASE_URI+"lastAccessed"),
-
-	/**
-	 *  	Class representing a suspect folder
-	 */
-	Folder(AFF4.AFF4_BASE_URI+"Folder"),
-
-	/**
-	 *  	Class representing a suspect folder for logical images
-	 */
-	FolderImage(AFF4.AFF4_BASE_URI+"FolderImage"),
 
 	/**
 	 * 	Property representing the FilesImages contained in a Folder
@@ -415,6 +432,9 @@ public enum AFF4Lexicon {
 	serialNumber(AFF4.AFF4_BASE_URI+"serialNumber");
 
 
+
+
+
 	/**
 	 * Map of all values to activities.
 	 */
@@ -436,7 +456,7 @@ public enum AFF4Lexicon {
 
 	/**
 	 * Create a new enumeration with the given ordinal.
-	 * 
+	 *
 	 * @param value The ordinal to assign.
 	 */
 	private AFF4Lexicon(String value) {
@@ -444,22 +464,8 @@ public enum AFF4Lexicon {
 	}
 
 	/**
-	 * Get the value of the enumeration.
-	 * 
-	 * @return The value of the enumeration.
-	 */
-	public String getValue() {
-		return value;
-	}
-	
-	@Override
-	public String toString() {
-		return value;
-	}
-
-	/**
 	 * Get the numeration for the given value
-	 * 
+	 *
 	 * @param value The value to derive an enumeration from.
 	 * @return A valid enumeration if the value exists, or a generic UNKNOWN operation if the value is unknown.
 	 */
@@ -467,4 +473,20 @@ public enum AFF4Lexicon {
 		AFF4Lexicon e = typesByValue.get(value);
 		return (e != null) ? e : UNKNOWN;
 	}
+
+	/**
+	 * Get the value of the enumeration.
+	 *
+	 * @return The value of the enumeration.
+	 */
+	public String getValue() {
+		return value;
+	}
+
+	@Override
+	public String toString() {
+		return value;
+	}
+
 }
+

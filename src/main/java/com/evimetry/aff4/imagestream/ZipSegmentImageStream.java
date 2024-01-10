@@ -84,7 +84,7 @@ public class ZipSegmentImageStream extends AFF4Resource implements IAFF4ImageStr
 		this.size = entry.getSize();
 		this.offset = entry.getDataOffset();
 		if (offset <= 0) {
-			throw new IOException("Invalid offset in datastream");
+			throw new IOException("Invalid offset in data stream");
 		}
 		initProperties();
 	}
@@ -95,6 +95,9 @@ public class ZipSegmentImageStream extends AFF4Resource implements IAFF4ImageStr
 	private void initProperties() {
 		properties.put(AFF4Lexicon.RDFType, Collections.singletonList(AFF4Lexicon.ImageStream));
 		properties.put(AFF4Lexicon.size, Collections.singletonList(size));
+
+
+
 	}
 
 	@Override
