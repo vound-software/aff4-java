@@ -82,12 +82,12 @@ public class AFF4Image extends AFF4Resource implements IAFF4Image {
 		if (properties.get(AFF4Lexicon.RDFType).contains(AFF4Lexicon.FileImage) || properties.get(AFF4Lexicon.RDFType).contains(AFF4Lexicon.Folder)) {
 
 			addDateTimeProperty(model, getResourceID(), AFF4Lexicon.birthTime);
-			addStringProperties(model, getResourceID(), AFF4Lexicon.hash);
+			addHashProperty(model, getResourceID(), AFF4Lexicon.hash);
 			addDateTimeProperty(model, getResourceID(), AFF4Lexicon.lastAccessed);
 			addDateTimeProperty(model, getResourceID(), AFF4Lexicon.lastWritten);
 			addStringProperty(model, getResourceID(), AFF4Lexicon.OriginalFileName);
 			addDateTimeProperty(model, getResourceID(), AFF4Lexicon.RecordChanged);
-			addStringProperty(model, getResourceID(), AFF4Lexicon.imageStreamHash);
+			addHashProperty(model, getResourceID(), AFF4Lexicon.imageStreamHash);
 
 		}
 		else if (properties.get(AFF4Lexicon.RDFType).contains(AFF4Lexicon.MemoryImage)) {

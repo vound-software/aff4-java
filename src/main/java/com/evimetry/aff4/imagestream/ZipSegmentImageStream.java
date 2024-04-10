@@ -95,9 +95,6 @@ public class ZipSegmentImageStream extends AFF4Resource implements IAFF4ImageStr
 	private void initProperties() {
 		properties.put(AFF4Lexicon.RDFType, Collections.singletonList(AFF4Lexicon.ImageStream));
 		properties.put(AFF4Lexicon.size, Collections.singletonList(size));
-
-
-
 	}
 
 	@Override

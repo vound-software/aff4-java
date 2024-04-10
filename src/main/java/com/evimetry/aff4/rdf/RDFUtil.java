@@ -17,6 +17,9 @@
 package com.evimetry.aff4.rdf;
 
 import java.time.Instant;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.List;
 import java.util.Optional;
 
 import org.apache.jena.datatypes.xsd.XSDDateTime;
@@ -26,9 +29,11 @@ import org.apache.jena.rdf.model.Property;
 import org.apache.jena.rdf.model.ResIterator;
 import org.apache.jena.rdf.model.Resource;
 import org.apache.jena.rdf.model.Statement;
+import org.apache.jena.rdf.model.StmtIterator;
 import org.apache.jena.vocabulary.RDF;
 
 import com.evimetry.aff4.AFF4Lexicon;
+import com.evimetry.aff4.rdf.HashStruct;
 
 /**
  * Collection of utility functions to use when dealing with the JENA RDF instance.
@@ -187,6 +192,42 @@ public class RDFUtil {
 		}
 		return Optional.empty();
 	}
+
+	/**
+	 * Get the Instant Time value of the property for the given resource.
+	 *
+	 * @param model The model to use
+	 * @param resource The resource
+	 * @param property the property
+	 * @return An optional with the found time.
+	 */
+	public static Optional<List<HashStruct>> readHashProperty(Model model, String resource, AFF4Lexicon property) {
+
+		List<HashStruct> res = new ArrayList<>();
+
+		Resource r = model.createResource(resource);
+		Property p = model.createProperty(property.getValue());
+
+		StmtIterator stmtIt = r.listProperties(p);
+
+		while (stmtIt.hasNext()) {
+
+			Statement stm = stmtIt.next();
+			String dataType = stm.getObject().asNode().getLiteralDatatypeURI();
+			String val = stm.getObject().asNode().getLiteralLexicalForm();
+
+			res.add(new HashStruct(AFF4Lexicon.forValue(dataType), val));
+
+		}
+
+		if (!res.isEmpty()) {
+			return Optional.of(res);
+		}
+
+		return Optional.empty();
+	}
+
+
 
 	/**
 	 * Get the Instant Time value of the property for the given resource.

@@ -26,6 +26,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
+import com.evimetry.aff4.rdf.HashStruct;
 import org.apache.jena.rdf.model.Model;
 import org.apache.jena.rdf.model.Property;
 import org.apache.jena.rdf.model.RDFNode;
@@ -163,6 +164,14 @@ public abstract class AFF4Resource implements IAFF4Resource {
 		Optional<Instant> value = RDFUtil.readDateTimeProperty(model, resource, property);
 		if (value.isPresent()) {
 			properties.put(property, Collections.singletonList(value.get()));
+		}
+	}
+
+
+	protected void addHashProperty(Model model, String resource, AFF4Lexicon property){
+		Optional<List<HashStruct>> value  = RDFUtil.readHashProperty(model, resource, property);
+		if(value.isPresent()){
+			properties.put(property, Collections.unmodifiableList(value.get()));
 		}
 	}
 
