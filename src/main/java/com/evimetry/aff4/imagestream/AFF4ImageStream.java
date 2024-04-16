@@ -22,8 +22,10 @@ import java.nio.channels.ClosedChannelException;
 import java.nio.channels.FileChannel;
 import java.nio.channels.SeekableByteChannel;
 import java.util.Collections;
+import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
 
+import com.evimetry.aff4.rdf.HashStruct;
 import org.apache.commons.compress.archivers.zip.ZipFile;
 import org.apache.jena.rdf.model.Model;
 
@@ -62,6 +64,11 @@ public class AFF4ImageStream extends AFF4Resource implements IAFF4ImageStream, S
 	 * The position of the channel.
 	 */
 	protected long position;
+
+	/**
+	 * The hashes of the stream
+	 */
+	protected List<HashStruct> hashes;
 
 	/**
 	 * The size of this entry;
@@ -117,6 +124,7 @@ public class AFF4ImageStream extends AFF4Resource implements IAFF4ImageStream, S
 		super(resource);
 		this.parent = parent;
 		this.size = RDFUtil.readLongProperty(model, resource, AFF4Lexicon.size).orElse(0l);
+		this.hashes = RDFUtil.readHashProperty(model, resource, AFF4Lexicon.hash).get();
 		this.chunkSize = RDFUtil.readIntProperty(model, resource, AFF4Lexicon.chunkSize).orElse(AFF4.DEFAULT_CHUNK_SIZE);
 		this.chunksInSegment = RDFUtil.readIntProperty(model, resource, AFF4Lexicon.chunksInSegment).orElse(AFF4.DEFAULT_CHUNKS_PER_SEGMENT);
 		String compression = RDFUtil.readResourceProperty(model, resource, AFF4Lexicon.compressionMethod).orElse(AFF4Lexicon.NoCompression.getValue());
@@ -139,6 +147,7 @@ public class AFF4ImageStream extends AFF4Resource implements IAFF4ImageStream, S
 	private void initProperties() {
 		properties.put(AFF4Lexicon.RDFType, Collections.singletonList(AFF4Lexicon.ImageStream));
 		properties.put(AFF4Lexicon.size, Collections.singletonList(size));
+		properties.put(AFF4Lexicon.hash, Collections.unmodifiableCollection(hashes));
 		properties.put(AFF4Lexicon.chunkSize, Collections.singletonList(chunkSize));
 		properties.put(AFF4Lexicon.chunksInSegment, Collections.singletonList(chunksInSegment));
 		properties.put(AFF4Lexicon.compressionMethod, Collections.singletonList(AFF4Lexicon.forValue(codec.getResourceID())));
