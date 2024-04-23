@@ -21,6 +21,7 @@ import java.nio.ByteBuffer;
 import java.nio.channels.ClosedChannelException;
 import java.nio.channels.FileChannel;
 import java.nio.channels.SeekableByteChannel;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -124,7 +125,7 @@ public class AFF4ImageStream extends AFF4Resource implements IAFF4ImageStream, S
 		super(resource);
 		this.parent = parent;
 		this.size = RDFUtil.readLongProperty(model, resource, AFF4Lexicon.size).orElse(0l);
-		this.hashes = RDFUtil.readHashProperty(model, resource, AFF4Lexicon.hash).get();
+		this.hashes = RDFUtil.readHashProperty(model, resource, AFF4Lexicon.hash).orElse(new ArrayList<>());
 		this.chunkSize = RDFUtil.readIntProperty(model, resource, AFF4Lexicon.chunkSize).orElse(AFF4.DEFAULT_CHUNK_SIZE);
 		this.chunksInSegment = RDFUtil.readIntProperty(model, resource, AFF4Lexicon.chunksInSegment).orElse(AFF4.DEFAULT_CHUNKS_PER_SEGMENT);
 		String compression = RDFUtil.readResourceProperty(model, resource, AFF4Lexicon.compressionMethod).orElse(AFF4Lexicon.NoCompression.getValue());
