@@ -178,7 +178,7 @@ public class AFF4ImageStream extends AFF4Resource implements IAFF4ImageStream, S
 		if (dst == null || !dst.hasRemaining()) {
 			return 0;
 		}
-		if (position + 1 >= size || position == Long.MAX_VALUE) {
+		if (position >= size || position == Long.MAX_VALUE) {
 			return -1;
 		}
 		// Determine the chunk buffer offset.
@@ -191,7 +191,7 @@ public class AFF4ImageStream extends AFF4Resource implements IAFF4ImageStream, S
 		long delta = position - offset;
 		regionBuffer.position((int) delta);
 		int count = 0;
-		while (dst.hasRemaining() && regionBuffer.hasRemaining()) {
+		while (dst.hasRemaining() && regionBuffer.hasRemaining() && (position + count ) < size) {
 			dst.put(regionBuffer.get());
 			count++;
 		}
