@@ -40,7 +40,7 @@ public class ZipSegmentImageCompressedStream extends AFF4Resource implements IAF
 	/**
 	 * The largest size this stream can be.
 	 */
-	public final static long MAX_BUFFER_SIZE = 32 * 1024 * 1024;
+	public final static long MAX_BUFFER_SIZE = 128 * 1024 * 1024;
 	/**
 	 * The parent AFF4 Zip container for this entry
 	 */
