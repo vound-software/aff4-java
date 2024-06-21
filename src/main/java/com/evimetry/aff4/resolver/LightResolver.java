@@ -138,6 +138,7 @@ public class LightResolver extends AFF4Resource implements IAFF4Resolver {
 		try (DirectoryStream<Path> stream = java.nio.file.Files.newDirectoryStream(basePath)) {
 			for (Path p : stream) {
 				if (p.toFile().isDirectory()) {
+					return;
 					//scanForAFF4Volumes(p);  // Bogdan . Disabled this line since in intella we don't want deep scanning. All archives must be in one folder
 				} else {
 					if (Containers.isAFF4Container(p.getFileName().toString())) {
